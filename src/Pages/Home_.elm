@@ -1,20 +1,13 @@
 module Pages.Home_ exposing (Model, Msg, page)
 
 import GraphQL
-import Html exposing (div, main_, span, text)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import Http exposing (Error(..))
-import Json.Decode exposing (Decoder)
 import Page exposing (Page)
+import Types.Song exposing (Song, songsDecoder)
+import Utils exposing (viewHttpError)
 import View exposing (View)
-
-
-type alias Song =
-    { name : String
-    , instrumentation : Maybe String
-    , tempo : Maybe String
-    , key : Maybe String
-    , interpreter : Maybe String
-    }
 
 
 page : Page Model Msg
@@ -27,31 +20,13 @@ page =
         }
 
 
-songDecoder : Decoder Song
-songDecoder =
-    Json.Decode.map5 Song
-        (Json.Decode.field "name" Json.Decode.string)
-        (Json.Decode.field "instrumentation"
-            (Json.Decode.maybe Json.Decode.string)
-        )
-        (Json.Decode.field "tempo" (Json.Decode.maybe Json.Decode.string))
-        (Json.Decode.field "key" (Json.Decode.maybe Json.Decode.string))
-        (Json.Decode.field "interpreter"
-            (Json.Decode.maybe Json.Decode.string)
-        )
-
-
-songsDecoder : Decoder (List Song)
-songsDecoder =
-    Json.Decode.list songDecoder
-
-
 getSongs : Cmd Msg
 getSongs =
     GraphQL.run
         { query = """
-            query {
+            query SongsWithFiles {
                 songs_with_files {
+                    rowid
                     name
                     instrumentation
                     tempo
@@ -60,7 +35,7 @@ getSongs =
                 }
             }
             """
-        , decoder = songsDecoder
+        , decoder = songsDecoder False
         , root = "songs_with_files"
         , url = "https://airsequel.fly.dev/readonly/270ny11gtb74f00k/graphql"
         , headers = []
@@ -127,52 +102,64 @@ subscriptions model =
 
 view : Model -> View Msg
 view model =
+    let
+        tableHead =
+            thead [] <|
+                [ tr []
+                    [ th [] [ text "Name" ]
+                    , th [] [ text "Instrumentation" ]
+                    , th [] [ text "Tempo" ]
+                    , th [] [ text "Key" ]
+                    , th [] [ text "Interpreter" ]
+                    ]
+                ]
+    in
     { title = "Pages.Home_"
     , body =
-        [ main_ []
-            (case model.songsResult of
-                Ok gqlRes ->
-                    case gqlRes.data of
-                        Just songs ->
-                            songs.root
-                                |> List.map viewSong
+        [ main_
+            []
+            [ div [ style "max-width" "50rem", style "margin" "0 auto" ]
+                [ h1 [ style "margin-bottom" "2rem" ]
+                    [ text "Airsequel Sheetmusic" ]
+                , div []
+                    (case model.songsResult of
+                        Ok gqlRes ->
+                            case gqlRes.data of
+                                Just songs ->
+                                    [ table [ style "width" "100%" ] <|
+                                        [ tableHead
+                                        , tbody [] <|
+                                            (songs.root
+                                                |> List.map viewSong
+                                            )
+                                        ]
+                                    ]
 
-                        Nothing ->
-                            [ text "No songs" ]
+                                Nothing ->
+                                    [ div
+                                        [ style "text-align" "center" ]
+                                        [ text "Loading …" ]
+                                    ]
 
-                Err httpError ->
-                    case httpError of
-                        BadUrl url ->
-                            [ text ("BadUrl: " ++ url) ]
-
-                        Timeout ->
-                            [ text "Timeout" ]
-
-                        NetworkError ->
-                            [ text "NetworkError" ]
-
-                        BadStatus response ->
-                            [ text
-                                ("BadStatus: "
-                                    ++ String.fromInt response
-                                )
-                            ]
-
-                        BadBody response ->
-                            [ text ("BadPayload: " ++ response) ]
-            )
+                        Err httpError ->
+                            [ viewHttpError httpError ]
+                    )
+                ]
+            ]
         ]
     }
 
 
 viewSong : Song -> Html.Html msg
 viewSong song =
-    div []
-        [ div []
-            [ span [] [ text song.name ]
-            , span [] [ text <| Maybe.withDefault "" song.instrumentation ]
-            , span [] [ text <| Maybe.withDefault "" song.tempo ]
-            , span [] [ text <| Maybe.withDefault "" song.key ]
-            , span [] [ text <| Maybe.withDefault "" song.interpreter ]
+    tr []
+        [ td []
+            [ a
+                [ href <| "/songs/" ++ String.fromInt song.rowid ]
+                [ text song.name ]
             ]
+        , td [] [ text <| Maybe.withDefault "" song.instrumentation ]
+        , td [] [ text <| Maybe.withDefault "" song.tempo ]
+        , td [] [ text <| Maybe.withDefault "" song.key ]
+        , td [] [ text <| Maybe.withDefault "" song.interpreter ]
         ]

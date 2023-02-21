@@ -220,7 +220,7 @@ view model =
                                 , inline_block
                                 ]
                             ]
-                            [ text "Airsequel Sheetmusic" ]
+                            [ text "Airsequel Sheet Music" ]
                         , input
                             [ type_ "text"
                             , placeholder "Airsequel Readonly ID"

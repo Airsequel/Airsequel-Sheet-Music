@@ -1,6 +1,6 @@
-# Airsequel Sheetmusic
+# Airsequel Sheet Music
 
-This is an example sheetmusic app powered by Airsequel.
+Sheet music management app powered by Airsequel, Elm Land, and Tailwind.
 
 
 ## Development

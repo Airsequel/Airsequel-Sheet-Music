@@ -1,5 +1,6 @@
 module Pages.Home_ exposing (Model, Msg, page)
 
+import Config exposing (dbUrl)
 import Css
 import Css.Global
 import GraphQL
@@ -42,7 +43,7 @@ getSongs =
             """
         , decoder = songsDecoder False
         , root = "songs_with_files"
-        , url = "https://airsequel.fly.dev/readonly/270ny11gtb74f00k/graphql"
+        , url = dbUrl ++ "/graphql"
         , headers = []
         , on = OnSongs
         , variables = Nothing

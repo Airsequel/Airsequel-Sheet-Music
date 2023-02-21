@@ -3,4 +3,4 @@ module Config exposing (..)
 
 dbUrl : String
 dbUrl =
-    "https://airsequel.fly.dev/api/dbs/01gprfj7yvvf7npmc49p5ngas4"
+    "https://airsequel.fly.dev/readonly/270ny11gtb74f00k"

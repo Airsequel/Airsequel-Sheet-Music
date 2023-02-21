@@ -1,5 +1,6 @@
 module Types.Song exposing (..)
 
+import Config exposing (dbUrl)
 import GraphQL
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -81,7 +82,7 @@ getSongsWithFiles songId msg =
             """
         , decoder = songsDecoder True
         , root = "songs_with_files_json"
-        , url = "https://airsequel.fly.dev/readonly/270ny11gtb74f00k/graphql"
+        , url = dbUrl ++ "/graphql"
         , headers = []
         , on = msg
         , variables = Nothing

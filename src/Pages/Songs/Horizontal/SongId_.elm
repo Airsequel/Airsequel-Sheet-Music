@@ -2,8 +2,8 @@ module Pages.Songs.Horizontal.SongId_ exposing (Model, Msg, page)
 
 import Config
 import GraphQL
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html.Styled exposing (..)
+import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
 import Page exposing (Page)
 import Types.File exposing (File)
@@ -97,22 +97,23 @@ view : Model -> View Msg
 view model =
     { title = "Pages.Songs.SongId_"
     , body =
-        [ div [ style "height" "100%" ] <|
-            case model.songsResult of
-                Ok gqlRes ->
-                    case gqlRes.data of
-                        Just songs ->
-                            case songs.root of
-                                song :: _ ->
-                                    [ viewSong song ]
+        [ toUnstyled <|
+            div [ style "height" "100%" ] <|
+                case model.songsResult of
+                    Ok gqlRes ->
+                        case gqlRes.data of
+                            Just songs ->
+                                case songs.root of
+                                    song :: _ ->
+                                        [ viewSong song ]
 
-                                _ ->
-                                    [ text "Multiple songs" ]
+                                    _ ->
+                                        [ text "Multiple songs" ]
 
-                        Nothing ->
-                            [ text "Loading …" ]
+                            Nothing ->
+                                [ text "Loading …" ]
 
-                Err httpError ->
-                    [ viewHttpError httpError ]
+                    Err httpError ->
+                        [ viewHttpError httpError ]
         ]
     }

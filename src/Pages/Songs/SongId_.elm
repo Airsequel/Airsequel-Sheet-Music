@@ -1,24 +1,28 @@
 module Pages.Songs.SongId_ exposing (Model, Msg, page)
 
-import Config
+import Effect exposing (Effect)
 import GraphQL
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
 import Page exposing (Page)
-import Types.File exposing (File)
-import Types.Song exposing (Song, getSongsWithFiles)
+import Route exposing (Route)
+import Shared
+import Tailwind.Breakpoints exposing (..)
+import Tailwind.Theme exposing (..)
+import Tailwind.Utilities exposing (..)
+import Types.Song exposing (Song)
 import Utils exposing (viewHttpError)
 import View exposing (View)
 
 
-page : { songId : String } -> Page Model Msg
-page params =
-    Page.element
-        { init = init params
+page : Shared.Model -> Route { songId : String } -> Page Model Msg
+page sharedModel route =
+    Page.new
+        { init = init sharedModel route
         , update = update
         , subscriptions = \_ -> Sub.none
-        , view = view
+        , view = view sharedModel
         }
 
 
@@ -30,10 +34,18 @@ type alias Model =
     { songsResult : GraphQL.Response (List Song) }
 
 
-init : { songId : String } -> ( Model, Cmd Msg )
-init params =
+init : Shared.Model -> Route { songId : String } -> () -> ( Model, Effect Msg )
+init sharedModel route _ =
     ( { songsResult = Ok { data = Nothing, errors = Nothing } }
-    , getSongsWithFiles params.songId OnSong
+    , case sharedModel.readonlyId of
+        Nothing ->
+            Effect.none
+
+        Just readonlyId ->
+            Shared.getSongWithFiles
+                readonlyId
+                route.params.songId
+                OnSong
     )
 
 
@@ -45,12 +57,12 @@ type Msg
     = OnSong (GraphQL.Response (List Song))
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         OnSong songsResult ->
             ( { model | songsResult = songsResult }
-            , Cmd.none
+            , Effect.none
             )
 
 
@@ -58,27 +70,25 @@ update msg model =
 -- VIEW
 
 
-viewImage : File -> Html msg
-viewImage file =
-    div
-        [ class "image"
-        , style "display" "inline-block"
-        ]
-        [ img
-            [ src
-                (Config.dbUrl
-                    ++ "/tables/files/columns/content/files/rowid/"
-                    ++ String.fromInt file.rowid
-                )
-            , style "max-height" "25rem"
-            , style "max-width" "20rem"
-            ]
-            []
-        ]
-
-
-viewSong : Song -> Html msg
-viewSong song =
+viewSong : String -> Song -> Html msg
+viewSong _ song =
+    let
+        buttonCss =
+            css
+                [ inline_block
+                , border
+                , rounded
+                , px_2
+                , py_1
+                , bg_color blue_200
+                , mr_2
+                , no_underline
+                , text_color blue_800
+                , border
+                , border_solid
+                , border_color blue_800
+                ]
+    in
     div []
         [ a [ href "/" ] [ text "← Back to Songs" ]
         , h2 [] [ text song.name ]
@@ -104,28 +114,23 @@ viewSong song =
                     [ text <| Maybe.withDefault "" song.key ]
                 ]
             ]
-        , a
-            [ href ("/songs/horizontal/" ++ String.fromInt song.rowid)
-            , class "button"
-            ]
-            [ text "Horizontal View" ]
-        , a
-            [ href ("/songs/vertical/" ++ String.fromInt song.rowid)
-            , class "button"
-            ]
-            [ text "Vertical View" ]
-        , br [] []
-        , div [ class "images" ]
-            [ h3 [] [ text "Images" ]
-            , br [] []
-            , div []
-                (song.files |> List.map viewImage)
+        , div [ css [ m_4 ] ]
+            [ a
+                [ href ("/songs/horizontal/" ++ String.fromInt song.rowid)
+                , buttonCss
+                ]
+                [ text "Horizontal View" ]
+            , a
+                [ href ("/songs/vertical/" ++ String.fromInt song.rowid)
+                , buttonCss
+                ]
+                [ text "Vertical View" ]
             ]
         ]
 
 
-view : Model -> View Msg
-view model =
+view : Shared.Model -> Model -> View Msg
+view sharedModel model =
     { title = "Pages.Songs.SongId_"
     , body =
         [ toUnstyled <|
@@ -136,7 +141,13 @@ view model =
                             Just songs ->
                                 case songs.root of
                                     song :: _ ->
-                                        [ viewSong song ]
+                                        [ viewSong
+                                            (Maybe.withDefault
+                                                ""
+                                                sharedModel.readonlyId
+                                            )
+                                            song
+                                        ]
 
                                     _ ->
                                         [ text "Multiple songs" ]

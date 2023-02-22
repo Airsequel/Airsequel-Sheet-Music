@@ -1,52 +1,31 @@
 module Pages.Home_ exposing (Model, Msg, page)
 
-import Config exposing (dbUrl)
 import Css
 import Css.Global
-import GraphQL
+import Effect exposing (Effect(..))
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
+import Html.Styled.Events exposing (onInput, onSubmit)
 import Http exposing (Error(..))
 import Page exposing (Page)
+import Route exposing (Route)
+import Shared
+import Shared.Msg exposing (Msg(..))
 import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
-import Types.Song exposing (Song, songsDecoder)
+import Types.Song exposing (Song)
 import Utils exposing (viewHttpError)
 import View exposing (View)
 
 
-page : Page Model Msg
-page =
-    Page.element
-        { init = init
+page : Shared.Model -> Route () -> Page Model Msg
+page sharedModel _ =
+    Page.new
+        { init = init sharedModel
         , update = update
         , subscriptions = \_ -> Sub.none
-        , view = view
-        }
-
-
-getSongs : Cmd Msg
-getSongs =
-    GraphQL.run
-        { query = """
-            query SongsWithFiles {
-                songs_with_files {
-                    rowid
-                    name
-                    instrumentation
-                    tempo
-                    key
-                    interpreter
-                }
-            }
-            """
-        , decoder = songsDecoder False
-        , root = "songs_with_files"
-        , url = dbUrl ++ "/graphql"
-        , headers = []
-        , on = OnSongs
-        , variables = Nothing
+        , view = view sharedModel
         }
 
 
@@ -55,18 +34,17 @@ getSongs =
 
 
 type alias Model =
-    { songsResult : GraphQL.Response (List Song) }
+    { sharedModel : Shared.Model
+    , partialReadonlyId : String
+    }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { songsResult =
-            Ok
-                { data = Nothing
-                , errors = Nothing
-                }
+init : Shared.Model -> () -> ( Model, Effect Msg )
+init sharedModel () =
+    ( { sharedModel = sharedModel
+      , partialReadonlyId = ""
       }
-    , getSongs
+    , Effect.none
     )
 
 
@@ -75,21 +53,22 @@ init =
 
 
 type Msg
-    = ExampleMsgReplaceMe
-    | OnSongs (GraphQL.Response (List Song))
+    = EnteredReadonlyId String
+    | SubmittedReadonlyId
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        ExampleMsgReplaceMe ->
-            ( model
-            , Cmd.none
+        EnteredReadonlyId readonlyId ->
+            ( { model | partialReadonlyId = readonlyId }
+            , Effect.none
             )
 
-        OnSongs songsResult ->
-            ( { model | songsResult = songsResult }
-            , Cmd.none
+        SubmittedReadonlyId ->
+            ( { model | partialReadonlyId = "" }
+            , SendSharedMsg <|
+                Shared.Msg.SubmittedReadonlyId model.partialReadonlyId
             )
 
 
@@ -156,8 +135,8 @@ viewSong song =
         ]
 
 
-view : Model -> View Msg
-view model =
+view : Shared.Model -> Model -> View Msg
+view sharedModel model =
     let
         thSty additions =
             th
@@ -222,23 +201,36 @@ view model =
                                 ]
                             ]
                             [ text "Airsequel Sheet Music" ]
-                        , input
-                            [ type_ "text"
-                            , placeholder "Airsequel Readonly ID"
-                            , css
-                                [ inline_block
-                                , border
-                                , border_solid
-                                , border_color gray_400
-                                , rounded
-                                , px_2
-                                , py_1
-                                ]
+                        , Html.Styled.form
+                            [ onSubmit SubmittedReadonlyId
+                            , css [ inline_block ]
                             ]
-                            []
+                            [ input
+                                [ type_ "text"
+                                , value model.partialReadonlyId
+                                , placeholder <|
+                                    case sharedModel.readonlyId of
+                                        Just id ->
+                                            id
+
+                                        Nothing ->
+                                            "Airsequel Readonly ID"
+                                , onInput EnteredReadonlyId
+                                , css
+                                    [ inline_block
+                                    , border
+                                    , border_solid
+                                    , border_color gray_400
+                                    , rounded
+                                    , px_2
+                                    , py_1
+                                    ]
+                                ]
+                                []
+                            ]
                         ]
                     , div []
-                        (case model.songsResult of
+                        (case sharedModel.songsResult of
                             Ok gqlRes ->
                                 case gqlRes.data of
                                     Just songs ->

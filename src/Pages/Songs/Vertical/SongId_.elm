@@ -1,48 +1,26 @@
 module Pages.Songs.Vertical.SongId_ exposing (Model, Msg, page)
 
-import Config
+import Effect exposing (Effect)
 import GraphQL
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
 import Page exposing (Page)
+import Route exposing (Route)
+import Shared
 import Types.File exposing (File)
-import Types.Song exposing (Song, getSongsWithFiles)
+import Types.Song exposing (Song)
 import Utils exposing (viewHttpError)
 import View exposing (View)
 
 
-viewSong : Song -> Html msg
-viewSong song =
-    div
-        [ class "images" ]
-        (song.files |> List.map viewImage)
-
-
-viewImage : File -> Html msg
-viewImage file =
-    div
-        [ class "image" ]
-        [ img
-            [ src
-                (Config.dbUrl
-                    ++ "/tables/files/columns/content/files/rowid/"
-                    ++ String.fromInt file.rowid
-                )
-            , style "width" "100%"
-            , style "max-height" "100%"
-            ]
-            []
-        ]
-
-
-page : { songId : String } -> Page Model Msg
-page params =
-    Page.element
-        { init = init params
+page : Shared.Model -> Route { songId : String } -> Page Model Msg
+page sharedModel route =
+    Page.new
+        { init = init sharedModel route
         , update = update
         , subscriptions = \_ -> Sub.none
-        , view = view
+        , view = view sharedModel
         }
 
 
@@ -54,10 +32,18 @@ type alias Model =
     { songsResult : GraphQL.Response (List Song) }
 
 
-init : { songId : String } -> ( Model, Cmd Msg )
-init params =
+init : Shared.Model -> Route { songId : String } -> () -> ( Model, Effect Msg )
+init sharedModel route _ =
     ( { songsResult = Ok { data = Nothing, errors = Nothing } }
-    , getSongsWithFiles params.songId OnSong
+    , case sharedModel.readonlyId of
+        Nothing ->
+            Effect.none
+
+        Just readonlyId ->
+            Shared.getSongWithFiles
+                readonlyId
+                route.params.songId
+                OnSong
     )
 
 
@@ -69,12 +55,12 @@ type Msg
     = OnSong (GraphQL.Response (List Song))
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         OnSong songsResult ->
             ( { model | songsResult = songsResult }
-            , Cmd.none
+            , Effect.none
             )
 
 
@@ -82,8 +68,33 @@ update msg model =
 -- VIEW
 
 
-view : Model -> View Msg
-view model =
+viewSong : String -> Song -> Html msg
+viewSong readonlyId song =
+    div
+        [ class "images" ]
+        (song.files |> List.map (viewImage readonlyId))
+
+
+viewImage : String -> File -> Html msg
+viewImage readonlyId file =
+    div
+        [ class "image" ]
+        [ img
+            [ src
+                ("https://airsequel.fly.dev/readonly/"
+                    ++ readonlyId
+                    ++ "/tables/files/columns/content/files/rowid/"
+                    ++ String.fromInt file.rowid
+                )
+            , style "width" "100%"
+            , style "max-height" "100%"
+            ]
+            []
+        ]
+
+
+view : Shared.Model -> Model -> View Msg
+view sharedModel model =
     { title = "Pages.Songs.SongId_"
     , body =
         [ toUnstyled <|
@@ -94,7 +105,13 @@ view model =
                             Just songs ->
                                 case songs.root of
                                     song :: _ ->
-                                        [ viewSong song ]
+                                        [ viewSong
+                                            (Maybe.withDefault
+                                                ""
+                                                sharedModel.readonlyId
+                                            )
+                                            song
+                                        ]
 
                                     _ ->
                                         [ text "Multiple songs" ]

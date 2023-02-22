@@ -1,6 +1,5 @@
 module Types.Song exposing (..)
 
-import Config exposing (dbUrl)
 import GraphQL
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -60,30 +59,3 @@ songDecoder withFiles =
 songsDecoder : Bool -> Decoder (List Song)
 songsDecoder withFiles =
     JD.list (songDecoder withFiles)
-
-
-getSongsWithFiles : String -> (GraphQL.Response (List Song) -> msg) -> Cmd msg
-getSongsWithFiles songId msg =
-    GraphQL.run
-        { query = """
-            query SongsWithFiles {
-                songs_with_files_json (
-                    filter: { rowid: { eq: """ ++ songId ++ """ } }
-                ) {
-                    rowid
-                    name
-                    instrumentation
-                    tempo
-                    key
-                    interpreter
-                    files
-                }
-            }
-            """
-        , decoder = songsDecoder True
-        , root = "songs_with_files_json"
-        , url = dbUrl ++ "/graphql"
-        , headers = []
-        , on = msg
-        , variables = Nothing
-        }

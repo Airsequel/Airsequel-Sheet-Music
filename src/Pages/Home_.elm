@@ -75,8 +75,8 @@ update msg model =
             then
                 ( { model
                     | errors = [ """
-                        Readonly ID must be 16 characters long.
-                        Please make sure you really copied the readonly ID
+                        Read-only ID must be 16 characters long.
+                        Please make sure you really copied the read-only ID
                         and not the normal database ID.
                         """ ]
                   }
@@ -122,7 +122,7 @@ viewReadonlyIdForm sharedModel model =
                         id
 
                     Nothing ->
-                        "Airsequel Readonly ID"
+                        "Airsequel read-only ID"
             , onInput EnteredReadonlyId
             , css
                 [ inline_block
@@ -146,12 +146,13 @@ viewGettingStarted sharedModel model =
             [ p [ css [ mb_4 ] ]
                 [ text """
                     Create a new Airsequel database
-                    from our template database:
+                    from our sheet music template database:
                     """
                 ]
             , a
                 [ href
                     "https://airsequel.fly.dev/readonly/0wxf09fh50yss0gk/duplicate"
+                , target "_blank"
                 , css
                     [ block
                     , px_6
@@ -170,19 +171,17 @@ viewGettingStarted sharedModel model =
         , li [ css [ mb_6 ] ]
             [ text """
                 Add your songs to the database
-                via the songs and files tables.
+                via the songs and files tables in the "Tables" tab.
                 """ ]
         , li [ css [ mb_6 ] ]
             [ p [ css [ mb_4 ] ]
                 [ text """
-                    Copy the readonly ID of your newly created database
-                    and post it in the input field:
+                    Find the read-only ID in the "Database" tab,
+                    post it here in the input field, and press enter:
                     """
                 ]
             , viewReadonlyIdForm sharedModel model
             ]
-        , li [ css [ mb_6 ] ]
-            [ text "Start making music! 🎶🎉" ]
         ]
     ]
 
@@ -315,7 +314,7 @@ view sharedModel model =
                                 [ div [ css [ pt_1_dot_5 ] ]
                                     [ label
                                         [ css [ text_color gray_400 ] ]
-                                        [ text "Readonly ID: " ]
+                                        [ text "Read-Only ID: " ]
                                     , viewReadonlyIdForm sharedModel model
                                     ]
                                 ]

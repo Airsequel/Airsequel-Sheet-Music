@@ -128,22 +128,31 @@ filesArePdfs files =
     files
         |> List.all
             (\file ->
-                (file.filetype |> String.toLower) == "pdf"
+                (file.filetype |> Maybe.map String.toLower)
+                    == Just "pdf"
             )
 
 
 viewSong : ReadDirection -> String -> Song -> Html msg
 viewSong readDirection sharedModel song =
-    div
-        [ class "images"
-        , css [ whitespace_nowrap, h_full ]
-        ]
-        (if List.isEmpty song.files then
-            [ text "No files" ]
+    let
+        divImages content =
+            div
+                [ css [ whitespace_nowrap, h_full ] ]
+                content
 
-         else if filesArePdfs song.files then
-            case song.files of
-                [ file ] ->
+        divCenter content =
+            div
+                [ css [ text_center, font_sans, pt_8 ] ]
+                content
+    in
+    if List.isEmpty song.files then
+        divCenter [ text "No files" ]
+
+    else if filesArePdfs song.files then
+        case song.files of
+            [ file ] ->
+                divImages
                     [ iframe
                         [ src
                             ("https://airsequel.fly.dev/readonly/"
@@ -156,15 +165,17 @@ viewSong readDirection sharedModel song =
                         []
                     ]
 
-                _ :: _ ->
-                    [ text "Does not support more than one PDF per song" ]
+            _ :: _ ->
+                divCenter [ text "Does not support more than one PDF per song" ]
 
-                _ ->
-                    [ text "No files" ]
+            _ ->
+                divCenter [ text "No files" ]
 
-         else
-            song.files |> List.map (viewImage readDirection sharedModel)
-        )
+    else
+        divImages
+            (song.files
+                |> List.map (viewImage readDirection sharedModel)
+            )
 
 
 viewPages : Settings -> Shared.Model -> Html msg
@@ -221,7 +232,7 @@ view :
         }
     -> View mainMsg
 view settings sharedModel _ =
-    { title = "XXX"
+    { title = "Play View"
     , body =
         [ toUnstyled <|
             viewPages settings sharedModel

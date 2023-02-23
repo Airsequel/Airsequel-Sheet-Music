@@ -133,18 +133,22 @@ viewSong _ song =
                     [ text <| String.fromInt <| List.length song.files ]
                 ]
             ]
-        , div []
-            [ a
-                [ href ("/songs/horizontal/" ++ String.fromInt song.rowid)
-                , buttonCss
+        , if List.isEmpty song.files then
+            text ""
+
+          else
+            div []
+                [ a
+                    [ href ("/songs/horizontal/" ++ String.fromInt song.rowid)
+                    , buttonCss
+                    ]
+                    [ text "↔ Horizontal View" ]
+                , a
+                    [ href ("/songs/vertical/" ++ String.fromInt song.rowid)
+                    , buttonCss
+                    ]
+                    [ text "↕ Vertical View" ]
                 ]
-                [ text "↔ Horizontal View" ]
-            , a
-                [ href ("/songs/vertical/" ++ String.fromInt song.rowid)
-                , buttonCss
-                ]
-                [ text "↕ Vertical View" ]
-            ]
         ]
 
 

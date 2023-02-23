@@ -36,6 +36,7 @@ page sharedModel _ =
 type alias Model =
     { sharedModel : Shared.Model
     , partialReadonlyId : String
+    , errors : List String
     }
 
 
@@ -43,6 +44,7 @@ init : Shared.Model -> () -> ( Model, Effect Msg )
 init sharedModel () =
     ( { sharedModel = sharedModel
       , partialReadonlyId = ""
+      , errors = []
       }
     , Effect.none
     )
@@ -66,10 +68,26 @@ update msg model =
             )
 
         SubmittedReadonlyId ->
-            ( { model | partialReadonlyId = "" }
-            , SendSharedMsg <|
-                Shared.Msg.SubmittedReadonlyId model.partialReadonlyId
-            )
+            if
+                String.length model.partialReadonlyId
+                    /= 16
+                    && not (String.isEmpty model.partialReadonlyId)
+            then
+                ( { model
+                    | errors = [ """
+                        Readonly ID must be 16 characters long.
+                        Please make sure you really copied the readonly ID
+                        and not the normal database ID.
+                        """ ]
+                  }
+                , Effect.none
+                )
+
+            else
+                ( { model | partialReadonlyId = "", errors = [] }
+                , SendSharedMsg <|
+                    Shared.Msg.SubmittedReadonlyId model.partialReadonlyId
+                )
 
 
 
@@ -288,44 +306,71 @@ view sharedModel model =
                             ]
                         ]
                         [ text "Airsequel Sheet Music" ]
-                        :: (case sharedModel.readonlyId of
-                                Nothing ->
-                                    []
-
-                                Just _ ->
-                                    [ div [ css [ pt_1_dot_5 ] ]
-                                        [ label
-                                            [ css [ text_color gray_400 ] ]
-                                            [ text "Readonly ID: " ]
-                                        , viewReadonlyIdForm sharedModel model
-                                        ]
+                        :: (if
+                                sharedModel.readonlyId
+                                    /= Nothing
+                                    && sharedModel.readonlyId
+                                    /= Just ""
+                            then
+                                [ div [ css [ pt_1_dot_5 ] ]
+                                    [ label
+                                        [ css [ text_color gray_400 ] ]
+                                        [ text "Readonly ID: " ]
+                                    , viewReadonlyIdForm sharedModel model
                                     ]
+                                ]
+
+                            else
+                                []
                            )
                     )
                 , div []
-                    (case sharedModel.songsResult of
-                        Ok gqlRes ->
-                            case gqlRes.data of
-                                Just songsData ->
-                                    [ viewSongsTable songsData.root ]
-
-                                Nothing ->
-                                    case sharedModel.readonlyId of
-                                        Nothing ->
-                                            viewGettingStarted
-                                                sharedModel
-                                                model
-
-                                        Just _ ->
-                                            [ div
-                                                [ style "text-align"
-                                                    "center"
-                                                ]
-                                                [ text "Loading …" ]
+                    (div []
+                        (model.errors
+                            |> List.map
+                                (\error ->
+                                    p
+                                        [ css
+                                            [ bg_color red_200
+                                            , border
+                                            , border_solid
+                                            , border_color red_800
+                                            , text_color red_800
+                                            , rounded
+                                            , px_4
+                                            , py_2
+                                            , mb_4
                                             ]
+                                        ]
+                                        [ text error ]
+                                )
+                        )
+                        :: (case sharedModel.songsResult of
+                                Ok gqlRes ->
+                                    case gqlRes.data of
+                                        Just songsData ->
+                                            [ viewSongsTable songsData.root ]
 
-                        Err httpError ->
-                            [ viewHttpError httpError ]
+                                        Nothing ->
+                                            if
+                                                sharedModel.readonlyId
+                                                    == Nothing
+                                                    || sharedModel.readonlyId
+                                                    == Just ""
+                                            then
+                                                viewGettingStarted sharedModel model
+
+                                            else
+                                                [ div
+                                                    [ style "text-align"
+                                                        "center"
+                                                    ]
+                                                    [ text "Loading …" ]
+                                                ]
+
+                                Err httpError ->
+                                    [ viewHttpError httpError ]
+                           )
                     )
                 ]
         ]

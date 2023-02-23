@@ -192,20 +192,16 @@ viewSong song =
         tdSty additions =
             td
                 [ css <|
-                    [ border_4
+                    [ border_x_4
                     , border_color white
                     , px_2
-                    , py_0_dot_5
+                    , py_1
                     ]
                         ++ additions
                 ]
     in
     tr
-        [ css
-            [ Css.pseudoClass "odd" [ bg_color white ]
-            , Css.pseudoClass "even" [ bg_color gray_200 ]
-            ]
-        ]
+        []
         [ tdSty []
             [ a
                 [ href <| "/songs/" ++ String.fromInt song.rowid
@@ -214,7 +210,7 @@ viewSong song =
                 [ text song.name ]
             ]
         , tdSty [] [ text <| Maybe.withDefault "" song.interpreter ]
-        , tdSty []
+        , tdSty [ text_center ]
             [ a
                 [ href <| "/songs/horizontal/" ++ String.fromInt song.rowid
                 , buttonStyle [ px_1 ]
@@ -227,8 +223,8 @@ viewSong song =
                 [ text "↕" ]
             ]
         , tdSty [] [ text <| Maybe.withDefault "" song.instrumentation ]
-        , tdSty [] [ text <| Maybe.withDefault "" song.tempo ]
-        , tdSty [] [ text <| Maybe.withDefault "" song.key ]
+        , tdSty [ text_center ] [ text <| Maybe.withDefault "" song.tempo ]
+        , tdSty [ text_center ] [ text <| Maybe.withDefault "" song.key ]
         ]
 
 
@@ -238,7 +234,7 @@ viewSongsTable songs =
         thSty additions =
             th
                 [ css <|
-                    [ border_4
+                    [ border_x_4
                     , border_color white
                     , px_2
                     , py_1

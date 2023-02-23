@@ -191,11 +191,10 @@ viewPages settings sharedModel =
                             div
                                 [ css
                                     [ if
-                                        Debug.log "filesArePdfs" <|
-                                            (settings.readDirection
-                                                == ReadHorizontal
-                                            )
-                                                || filesArePdfs song.files
+                                        (settings.readDirection
+                                            == ReadHorizontal
+                                        )
+                                            || filesArePdfs song.files
                                       then
                                         h_full
 

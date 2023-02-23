@@ -20,6 +20,7 @@ import Route exposing (Route)
 import Shared.Model
 import Shared.Msg
 import Types.Song exposing (songsDecoder)
+import Utils exposing (host)
 
 
 getSongs : String -> Effect Msg
@@ -27,19 +28,21 @@ getSongs readonlyId =
     Effect.sendCmd <|
         GraphQL.run
             { query = """
-            query SongsWithFiles {
-                songs_with_files {
-                    rowid
-                    name
-                    instrumentation
-                    tempo
-                    key
-                    interpreter
+                query Songs {
+                    songs_json {
+                        rowid
+                        name
+                        instrumentation
+                        tempo
+                        key
+                        interpreter
+                        numberOfFiles
+                        filetypes
+                    }
                 }
-            }
-            """
+                """
             , decoder = songsDecoder False
-            , root = "songs_with_files"
+            , root = "songs_json"
             , url =
                 host
                     ++ "/readonly/"
@@ -70,6 +73,8 @@ getSongWithFiles readonlyId songId msg =
                     tempo
                     key
                     interpreter
+                    numberOfFiles
+                    filetypes
                     files
                 }
             }

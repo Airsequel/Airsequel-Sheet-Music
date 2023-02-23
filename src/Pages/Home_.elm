@@ -100,7 +100,6 @@ buttonStyle add =
         [ inline_block
         , bg_color blue_200
         , rounded
-        , mr_1
         , w_6
         , h_6
         ]
@@ -209,17 +208,42 @@ viewSong song =
                 [ text song.name ]
             ]
         , tdSty [] [ text <| Maybe.withDefault "" song.interpreter ]
-        , tdSty [ text_center ]
-            [ a
-                [ href <| "/songs/horizontal/" ++ String.fromInt song.rowid
-                , buttonStyle [ px_1 ]
-                ]
-                [ text "↔" ]
-            , a
-                [ href <| "/songs/vertical/" ++ String.fromInt song.rowid
-                , buttonStyle [ px_2 ]
-                ]
-                [ text "↕" ]
+        , tdSty [] [ text <| String.fromInt song.numberOfFiles ]
+        , tdSty []
+            [ if song.numberOfFiles == 0 then
+                text ""
+
+              else
+                div
+                    [ css
+                        [ flex
+                        , flex_wrap
+                        , gap_1
+                        , justify_center
+                        ]
+                    ]
+                    [ if song.filetypes == Just "pdf" then
+                        span [ buttonStyle [ invisible ] ] [ text "X" ]
+
+                      else
+                        a
+                            [ href <|
+                                "/songs/horizontal/"
+                                    ++ String.fromInt song.rowid
+                            , buttonStyle [ px_1 ]
+                            ]
+                            [ text "↔" ]
+                    , a
+                        [ href <|
+                            "/songs/vertical/"
+                                ++ String.fromInt song.rowid
+                        , buttonStyle [ px_2, align_top, font_black ]
+                        ]
+                        [ span
+                            [ css [ relative, bottom_0_dot_5 ] ]
+                            [ text "↕" ]
+                        ]
+                    ]
             ]
         , tdSty [] [ text <| Maybe.withDefault "" song.instrumentation ]
         , tdSty [ text_center ] [ text <| Maybe.withDefault "" song.tempo ]
@@ -246,6 +270,7 @@ viewSongsTable songs =
                 [ tr [ css [ bg_color blue_100 ] ]
                     [ thSty [] [ text "Song" ]
                     , thSty [] [ text "Interpreter" ]
+                    , thSty [] [ text "#" ]
                     , thSty [] [ text "Open" ]
                     , thSty [] [ text "Instrumentation" ]
                     , thSty [] [ text "Tempo" ]
@@ -254,7 +279,7 @@ viewSongsTable songs =
                 ]
     in
     Html.Styled.table
-        [ css [ w_full ] ]
+        [ css [ w_full, bg_color white ] ]
         [ tableHead
         , tbody [] <|
             (songs
@@ -356,9 +381,7 @@ view sharedModel model =
 
                                             else
                                                 [ div
-                                                    [ style "text-align"
-                                                        "center"
-                                                    ]
+                                                    [ css [ text_center ] ]
                                                     [ text "Loading …" ]
                                                 ]
 

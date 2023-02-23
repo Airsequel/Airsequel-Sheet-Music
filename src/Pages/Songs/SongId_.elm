@@ -138,11 +138,18 @@ viewSong _ song =
 
           else
             div []
-                [ a
-                    [ href ("/songs/horizontal/" ++ String.fromInt song.rowid)
-                    , buttonCss
-                    ]
-                    [ text "↔ Horizontal View" ]
+                [ if song.filetypes == Just "pdf" then
+                    text ""
+
+                  else
+                    a
+                        [ href
+                            ("/songs/horizontal/"
+                                ++ String.fromInt song.rowid
+                            )
+                        , buttonCss
+                        ]
+                        [ text "↔ Horizontal View" ]
                 , a
                     [ href ("/songs/vertical/" ++ String.fromInt song.rowid)
                     , buttonCss

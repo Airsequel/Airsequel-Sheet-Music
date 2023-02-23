@@ -1,10 +1,10 @@
 module Types.Song exposing (..)
 
-import GraphQL
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http exposing (Error(..))
 import Json.Decode as JD exposing (Decoder)
+import Json.Decode.Pipeline as JDP
 import Types.File exposing (File, fileDecoder)
 
 
@@ -15,38 +15,54 @@ type alias Song =
     , tempo : Maybe String
     , key : Maybe String
     , interpreter : Maybe String
+    , numberOfFiles : Int
+    , filetypes : Maybe String
     , files : List File
     }
 
 
+filesDecoder : Bool -> Decoder (List File)
+filesDecoder withFiles =
+    if withFiles then
+        JD.field "files" JD.string
+            |> JD.andThen
+                (\filesJson ->
+                    case
+                        filesJson
+                            |> JD.decodeString (JD.list fileDecoder)
+                    of
+                        Ok files ->
+                            JD.succeed files
+
+                        Err jsonError ->
+                            JD.errorToString jsonError
+                                |> JD.fail
+                )
+
+    else
+        JD.succeed []
+
+
 songDecoder : Bool -> Decoder Song
 songDecoder withFiles =
-    JD.map7 Song
-        (JD.field "rowid" JD.int)
-        (JD.field "name" JD.string)
-        (JD.field "instrumentation" (JD.maybe JD.string))
-        (JD.field "tempo" (JD.maybe JD.string))
-        (JD.field "key" (JD.maybe JD.string))
-        (JD.field "interpreter" (JD.maybe JD.string))
-        (if withFiles then
-            JD.field "files" JD.string
+    JD.succeed Song
+        |> JDP.required "rowid" JD.int
+        |> JDP.required "name" JD.string
+        |> JDP.required "instrumentation" (JD.maybe JD.string)
+        |> JDP.required "tempo" (JD.maybe JD.string)
+        |> JDP.required "key" (JD.maybe JD.string)
+        |> JDP.required "interpreter" (JD.maybe JD.string)
+        |> JDP.custom
+            (JD.field "numberOfFiles" JD.string
                 |> JD.andThen
-                    (\filesJson ->
-                        case
-                            filesJson
-                                |> JD.decodeString (JD.list fileDecoder)
-                        of
-                            Ok files ->
-                                JD.succeed files
-
-                            Err jsonError ->
-                                JD.errorToString jsonError
-                                    |> JD.fail
+                    (\s ->
+                        String.toInt s
+                            |> Maybe.withDefault 0
+                            |> JD.succeed
                     )
-
-         else
-            JD.succeed []
-        )
+            )
+        |> JDP.required "filetypes" (JD.maybe JD.string)
+        |> JDP.custom (filesDecoder withFiles)
 
 
 songsDecoder : Bool -> Decoder (List Song)

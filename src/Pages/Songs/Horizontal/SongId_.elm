@@ -80,7 +80,7 @@ update msg model =
 
 
 view : Shared.Model -> Model -> View Msg
-view sharedModel model =
+view _ _ =
     { title = "Horizontal Song View"
     , body = []
     }

@@ -41,7 +41,8 @@ getSongs readonlyId =
             , decoder = songsDecoder False
             , root = "songs_with_files"
             , url =
-                "https://airsequel.fly.dev/readonly/"
+                host
+                    ++ "/readonly/"
                     ++ readonlyId
                     ++ "/graphql"
             , headers = []
@@ -76,7 +77,8 @@ getSongWithFiles readonlyId songId msg =
             , decoder = songsDecoder True
             , root = "songs_with_files_json"
             , url =
-                "https://airsequel.fly.dev/readonly/"
+                host
+                    ++ "/readonly/"
                     ++ readonlyId
                     ++ "/graphql"
             , headers = []

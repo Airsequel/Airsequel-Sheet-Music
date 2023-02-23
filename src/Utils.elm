@@ -5,6 +5,11 @@ import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
 
 
+host : String
+host =
+    "https://airsequel.fly.dev"
+
+
 viewHttpError : Http.Error -> Html msg
 viewHttpError error =
     case error of

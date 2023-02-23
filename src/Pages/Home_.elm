@@ -15,7 +15,7 @@ import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
 import Types.Song exposing (Song)
-import Utils exposing (viewHttpError)
+import Utils exposing (host, viewHttpError)
 import View exposing (View)
 
 
@@ -150,8 +150,7 @@ viewGettingStarted sharedModel model =
                     """
                 ]
             , a
-                [ href
-                    "https://airsequel.fly.dev/readonly/0wxf09fh50yss0gk/duplicate"
+                [ href <| host ++ "/readonly/4h0ffwwj66ge37e1/duplicate"
                 , target "_blank"
                 , css
                     [ block

@@ -18,7 +18,7 @@ import Tailwind.Utilities exposing (..)
 import Types.File exposing (File)
 import Types.ReadDirection exposing (ReadDirection(..))
 import Types.Song exposing (Song)
-import Utils exposing (viewHttpError)
+import Utils exposing (host, viewHttpError)
 import View exposing (View)
 
 
@@ -93,7 +93,8 @@ viewImage readDirection readonlyId file =
         ]
         [ img
             [ src
-                ("https://airsequel.fly.dev/readonly/"
+                (host
+                    ++ "/readonly/"
                     ++ readonlyId
                     ++ "/tables/files/columns/content/files/rowid/"
                     ++ String.fromInt file.rowid
@@ -155,7 +156,8 @@ viewSong readDirection sharedModel song =
                 divImages
                     [ iframe
                         [ src
-                            ("https://airsequel.fly.dev/readonly/"
+                            (host
+                                ++ "/readonly/"
                                 ++ sharedModel
                                 ++ "/tables/files/columns/content/files/rowid/"
                                 ++ String.fromInt file.rowid

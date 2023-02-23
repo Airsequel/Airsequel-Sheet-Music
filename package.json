@@ -1,5 +1,6 @@
 {
   "devDependencies": {
-    "elm-format": "^0.8.5"
+    "elm-format": "^0.8.5",
+    "elm-land": "^0.18.1"
   }
 }

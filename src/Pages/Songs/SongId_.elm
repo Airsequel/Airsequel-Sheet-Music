@@ -5,6 +5,7 @@ import GraphQL
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
@@ -24,6 +25,15 @@ page sharedModel route =
         , subscriptions = \_ -> Sub.none
         , view = view sharedModel
         }
+        |> Page.withLayout
+            (\_ ->
+                Layouts.Default
+                    { default =
+                        { title =
+                            "Song " ++ route.params.songId
+                        }
+                    }
+            )
 
 
 
@@ -88,43 +98,52 @@ viewSong _ song =
                 , border_solid
                 , border_color blue_800
                 ]
+
+        keySpan value =
+            span
+                [ css [ inline_block, w_40, text_right, mr_2 ] ]
+                [ text value ]
     in
     div []
-        [ a [ href "/" ] [ text "← Back to Songs" ]
-        , h2 [] [ text song.name ]
-        , ul []
+        [ h2 [ css [ text_3xl, mb_8 ] ] [ text song.name ]
+        , ul [ css [ mb_8 ] ]
             [ li []
-                [ text "Interpreter: "
+                [ keySpan "Interpreter:"
                 , strong []
-                    [ text <| Maybe.withDefault "" song.interpreter ]
+                    [ text <| Maybe.withDefault "-" song.interpreter ]
                 ]
             , li []
-                [ text "Instrumentation: "
+                [ keySpan "Instrumentation:"
                 , strong []
-                    [ text <| Maybe.withDefault "" song.instrumentation ]
+                    [ text <| Maybe.withDefault "-" song.instrumentation ]
                 ]
             , li []
-                [ text "Tempo: "
+                [ keySpan "Tempo:"
                 , strong []
-                    [ text <| Maybe.withDefault "" song.tempo ]
+                    [ text <| Maybe.withDefault "-" song.tempo ]
                 ]
             , li []
-                [ text "Key: "
+                [ keySpan "Key:"
                 , strong []
-                    [ text <| Maybe.withDefault "" song.key ]
+                    [ text <| Maybe.withDefault "-" song.key ]
+                ]
+            , li []
+                [ keySpan "Number of Pages: "
+                , strong []
+                    [ text <| String.fromInt <| List.length song.files ]
                 ]
             ]
-        , div [ css [ m_4 ] ]
+        , div []
             [ a
                 [ href ("/songs/horizontal/" ++ String.fromInt song.rowid)
                 , buttonCss
                 ]
-                [ text "Horizontal View" ]
+                [ text "↔ Horizontal View" ]
             , a
                 [ href ("/songs/vertical/" ++ String.fromInt song.rowid)
                 , buttonCss
                 ]
-                [ text "Vertical View" ]
+                [ text "↕ Vertical View" ]
             ]
         ]
 

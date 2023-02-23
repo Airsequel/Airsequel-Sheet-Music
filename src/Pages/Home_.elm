@@ -76,16 +76,109 @@ update msg model =
 -- VIEW
 
 
+buttonStyle : List Css.Style -> Attribute msg
+buttonStyle add =
+    css <|
+        [ inline_block
+        , bg_color blue_200
+        , rounded
+        , mr_1
+        , w_6
+        , h_6
+        ]
+            ++ add
+
+
+viewReadonlyIdForm : Shared.Model -> Model -> Html Msg
+viewReadonlyIdForm sharedModel model =
+    Html.Styled.form
+        [ onSubmit SubmittedReadonlyId
+        , css [ inline_block ]
+        ]
+        [ input
+            [ type_ "text"
+            , value model.partialReadonlyId
+            , placeholder <|
+                case sharedModel.readonlyId of
+                    Just id ->
+                        id
+
+                    Nothing ->
+                        "Airsequel Readonly ID"
+            , onInput EnteredReadonlyId
+            , css
+                [ inline_block
+                , border
+                , border_solid
+                , border_color gray_400
+                , rounded
+                , px_2
+                , py_1
+                ]
+            ]
+            []
+        ]
+
+
+viewGettingStarted : Shared.Model -> Model -> List (Html Msg)
+viewGettingStarted sharedModel model =
+    [ h2 [ css [ text_2xl, mb_8 ] ] [ text "Getting Started" ]
+    , ol [ css [ list_decimal, ml_8 ] ]
+        [ li [ css [ mb_6 ] ]
+            [ p [ css [ mb_4 ] ]
+                [ text """
+                    Create a new Airsequel database
+                    from our template database:
+                    """
+                ]
+            , a
+                [ href
+                    "https://airsequel.fly.dev/readonly/0wxf09fh50yss0gk/duplicate"
+                , css
+                    [ block
+                    , px_6
+                    , py_3
+                    , rounded
+                    , border
+                    , border_solid
+                    , border_color blue_800
+                    , text_color blue_800
+                    , max_w_max
+                    , bg_color blue_200
+                    ]
+                ]
+                [ text "Create Database" ]
+            ]
+        , li [ css [ mb_6 ] ]
+            [ text """
+                Add your songs to the database
+                via the songs and files tables.
+                """ ]
+        , li [ css [ mb_6 ] ]
+            [ p [ css [ mb_4 ] ]
+                [ text """
+                    Copy the readonly ID of your newly created database
+                    and post it in the input field:
+                    """
+                ]
+            , viewReadonlyIdForm sharedModel model
+            ]
+        , li [ css [ mb_6 ] ]
+            [ text "Start making music! 🎶🎉" ]
+        ]
+    ]
+
+
 viewSong : Song -> Html msg
 viewSong song =
     let
         tdSty additions =
             td
                 [ css <|
-                    [ border
-                    , border_color slate_500
+                    [ border_4
+                    , border_color white
                     , px_2
-                    , py_1
+                    , py_0_dot_5
                     ]
                         ++ additions
                 ]
@@ -103,46 +196,33 @@ viewSong song =
                 ]
                 [ text song.name ]
             ]
+        , tdSty [] [ text <| Maybe.withDefault "" song.interpreter ]
         , tdSty []
-            (let
-                buttonStyle add =
-                    css <|
-                        [ inline_block
-                        , bg_color blue_200
-                        , rounded
-                        , mr_1
-                        , w_6
-                        , h_6
-                        ]
-                            ++ add
-             in
-             [ a
+            [ a
                 [ href <| "/songs/horizontal/" ++ String.fromInt song.rowid
                 , buttonStyle [ px_1 ]
                 ]
                 [ text "↔" ]
-             , a
+            , a
                 [ href <| "/songs/vertical/" ++ String.fromInt song.rowid
                 , buttonStyle [ px_2 ]
                 ]
                 [ text "↕" ]
-             ]
-            )
+            ]
         , tdSty [] [ text <| Maybe.withDefault "" song.instrumentation ]
         , tdSty [] [ text <| Maybe.withDefault "" song.tempo ]
         , tdSty [] [ text <| Maybe.withDefault "" song.key ]
-        , tdSty [] [ text <| Maybe.withDefault "" song.interpreter ]
         ]
 
 
-view : Shared.Model -> Model -> View Msg
-view sharedModel model =
+viewSongsTable : List Song -> Html Msg
+viewSongsTable songs =
     let
         thSty additions =
             th
                 [ css <|
-                    [ border
-                    , border_color slate_500
+                    [ border_4
+                    , border_color white
                     , px_2
                     , py_1
                     ]
@@ -152,34 +232,36 @@ view sharedModel model =
         tableHead =
             thead [] <|
                 [ tr [ css [ bg_color blue_100 ] ]
-                    [ thSty [] [ text "Name" ]
+                    [ thSty [] [ text "Song" ]
+                    , thSty [] [ text "Interpreter" ]
                     , thSty [] [ text "Open" ]
                     , thSty [] [ text "Instrumentation" ]
                     , thSty [] [ text "Tempo" ]
                     , thSty [] [ text "Key" ]
-                    , thSty [] [ text "Interpreter" ]
                     ]
                 ]
-
-        viewSongsTable songs =
-            Html.Styled.table
-                [ css [ w_full ] ]
-                [ tableHead
-                , tbody [] <|
-                    (songs.root
-                        |> List.map viewSong
-                    )
-                ]
     in
-    { title = "Pages.Home_"
+    Html.Styled.table
+        [ css [ w_full ] ]
+        [ tableHead
+        , tbody [] <|
+            (songs
+                |> List.map viewSong
+            )
+        ]
+
+
+view : Shared.Model -> Model -> View Msg
+view sharedModel model =
+    { title = "Airsequel Sheet Music"
     , body =
         [ toUnstyled <|
             main_
                 [ css
                     [ bg_color white
-                    , py_16
+                    , py_12
                     , px_10
-                    , max_w_4xl
+                    , max_w_5xl
                     , mx_auto
                     , min_h_full
                     , border_x
@@ -187,65 +269,64 @@ view sharedModel model =
                     ]
                 ]
                 [ Css.Global.global globalStyles
-                , div
-                    []
-                    [ nav
-                        []
-                        [ h1
-                            [ css
-                                [ font_bold
-                                , text_2xl
-                                , mb_8
-                                , mr_4
-                                , inline_block
-                                ]
-                            ]
-                            [ text "Airsequel Sheet Music" ]
-                        , Html.Styled.form
-                            [ onSubmit SubmittedReadonlyId
-                            , css [ inline_block ]
-                            ]
-                            [ input
-                                [ type_ "text"
-                                , value model.partialReadonlyId
-                                , placeholder <|
-                                    case sharedModel.readonlyId of
-                                        Just id ->
-                                            id
-
-                                        Nothing ->
-                                            "Airsequel Readonly ID"
-                                , onInput EnteredReadonlyId
-                                , css
-                                    [ inline_block
-                                    , border
-                                    , border_solid
-                                    , border_color gray_400
-                                    , rounded
-                                    , px_2
-                                    , py_1
-                                    ]
-                                ]
-                                []
+                , nav
+                    [ css
+                        [ flex
+                        , flex_col
+                        , sm [ flex_row ]
+                        , pb_8
+                        ]
+                    ]
+                    (h1
+                        [ css
+                            [ font_bold
+                            , text_3xl
+                            , mr_4
+                            , inline_block
+                            , text_color blue_800
+                            , grow
                             ]
                         ]
-                    , div []
-                        (case sharedModel.songsResult of
-                            Ok gqlRes ->
-                                case gqlRes.data of
-                                    Just songs ->
-                                        [ viewSongsTable songs ]
+                        [ text "Airsequel Sheet Music" ]
+                        :: (case sharedModel.readonlyId of
+                                Nothing ->
+                                    []
 
-                                    Nothing ->
-                                        [ div
-                                            [ style "text-align" "center" ]
-                                            [ text "Loading …" ]
+                                Just _ ->
+                                    [ div [ css [ pt_1_dot_5 ] ]
+                                        [ label
+                                            [ css [ text_color gray_400 ] ]
+                                            [ text "Readonly ID: " ]
+                                        , viewReadonlyIdForm sharedModel model
                                         ]
+                                    ]
+                           )
+                    )
+                , div []
+                    (case sharedModel.songsResult of
+                        Ok gqlRes ->
+                            case gqlRes.data of
+                                Just songsData ->
+                                    [ viewSongsTable songsData.root ]
 
-                            Err httpError ->
-                                [ viewHttpError httpError ]
-                        )
-                    ]
+                                Nothing ->
+                                    case sharedModel.readonlyId of
+                                        Nothing ->
+                                            viewGettingStarted
+                                                sharedModel
+                                                model
+
+                                        Just _ ->
+                                            [ div
+                                                [ style "text-align"
+                                                    "center"
+                                                ]
+                                                [ text "Loading …" ]
+                                            ]
+
+                        Err httpError ->
+                            [ viewHttpError httpError ]
+                    )
                 ]
         ]
     }

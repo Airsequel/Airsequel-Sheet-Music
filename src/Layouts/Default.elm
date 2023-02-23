@@ -1,8 +1,12 @@
-module Layouts.Default exposing (Model, Msg, Settings, layout)
+module Layouts.Default exposing
+    ( Model
+    , Msg
+    , Settings
+    , layout
+    )
 
 import Css.Global
 import Effect exposing (Effect(..))
-import Html as Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))

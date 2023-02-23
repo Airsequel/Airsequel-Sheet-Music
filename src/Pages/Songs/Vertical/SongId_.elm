@@ -1,16 +1,17 @@
 module Pages.Songs.Vertical.SongId_ exposing (Model, Msg, page)
 
-import Effect exposing (Effect)
+import Effect exposing (Effect(..))
 import GraphQL
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
+import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
-import Types.File exposing (File)
+import Tailwind.Utilities exposing (..)
+import Types.ReadDirection exposing (ReadDirection(..))
 import Types.Song exposing (Song)
-import Utils exposing (viewHttpError)
 import View exposing (View)
 
 
@@ -22,6 +23,16 @@ page sharedModel route =
         , subscriptions = \_ -> Sub.none
         , view = view sharedModel
         }
+        |> Page.withLayout
+            (\model ->
+                Layouts.PlayLayout
+                    { playLayout =
+                        { songId = route.params.songId
+                        , readDirection = ReadVertical
+                        , songsResult = model.songsResult
+                        }
+                    }
+            )
 
 
 
@@ -68,58 +79,8 @@ update msg model =
 -- VIEW
 
 
-viewSong : String -> Song -> Html msg
-viewSong readonlyId song =
-    div
-        [ class "images" ]
-        (song.files |> List.map (viewImage readonlyId))
-
-
-viewImage : String -> File -> Html msg
-viewImage readonlyId file =
-    div
-        [ class "image" ]
-        [ img
-            [ src
-                ("https://airsequel.fly.dev/readonly/"
-                    ++ readonlyId
-                    ++ "/tables/files/columns/content/files/rowid/"
-                    ++ String.fromInt file.rowid
-                )
-            , style "width" "100%"
-            , style "max-height" "100%"
-            ]
-            []
-        ]
-
-
 view : Shared.Model -> Model -> View Msg
 view sharedModel model =
-    { title = "Pages.Songs.SongId_"
-    , body =
-        [ toUnstyled <|
-            div [ style "width" "100%" ] <|
-                case model.songsResult of
-                    Ok gqlRes ->
-                        case gqlRes.data of
-                            Just songs ->
-                                case songs.root of
-                                    song :: _ ->
-                                        [ viewSong
-                                            (Maybe.withDefault
-                                                ""
-                                                sharedModel.readonlyId
-                                            )
-                                            song
-                                        ]
-
-                                    _ ->
-                                        [ text "Multiple songs" ]
-
-                            Nothing ->
-                                [ text "Loading …" ]
-
-                    Err httpError ->
-                        [ viewHttpError httpError ]
-        ]
+    { title = "Horizontal Song View"
+    , body = []
     }

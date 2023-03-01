@@ -124,13 +124,13 @@ viewImage readDirection readonlyId file =
         ]
 
 
-filesArePdfs : List File -> Bool
-filesArePdfs files =
+filesAreType : String -> List File -> Bool
+filesAreType filetype files =
     files
         |> List.all
             (\file ->
                 (file.filetype |> Maybe.map String.toLower)
-                    == Just "pdf"
+                    == Just (String.toLower filetype)
             )
 
 
@@ -150,7 +150,7 @@ viewSong readDirection sharedModel song =
     if List.isEmpty song.files then
         divCenter [ text "No files" ]
 
-    else if filesArePdfs song.files then
+    else if song.files |> filesAreType "pdf" then
         case song.files of
             [ file ] ->
                 divImages
@@ -190,11 +190,15 @@ viewPages settings sharedModel =
                         song :: _ ->
                             div
                                 [ css
-                                    [ if
+                                    [ bg_color white
+
+                                    -- Make bg color cover the whole page:
+                                    , overflow_scroll
+                                    , if
                                         (settings.readDirection
                                             == ReadHorizontal
                                         )
-                                            || filesArePdfs song.files
+                                            || filesAreType "pdf" song.files
                                       then
                                         h_full
 

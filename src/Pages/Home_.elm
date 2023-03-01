@@ -11,6 +11,8 @@ import Page exposing (Page)
 import Route exposing (Route)
 import Shared
 import Shared.Msg exposing (Msg(..))
+import Svg.Styled as Svg
+import Svg.Styled.Attributes exposing (d, viewBox)
 import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
@@ -214,6 +216,20 @@ viewSong song =
                 text ""
 
               else
+                let
+                    arrowIconVert styles =
+                        Svg.svg
+                            [ viewBox "0 0 24 24"
+                            , css <| [ block, w_full, h_full ] ++ styles
+                            ]
+                            [ Svg.path
+                                [ d <|
+                                    "M13 6.99h3L12 3 8 6.99h3v10.02"
+                                        ++ "H8L12 21l4-3.99h-3z"
+                                ]
+                                []
+                            ]
+                in
                 div
                     [ css
                         [ flex
@@ -230,19 +246,16 @@ viewSong song =
                             [ href <|
                                 "/songs/horizontal/"
                                     ++ String.fromInt song.rowid
-                            , buttonStyle [ px_1 ]
+                            , buttonStyle [ p_0_dot_5 ]
                             ]
-                            [ text "↔" ]
+                            [ arrowIconVert [ rotate_90 ] ]
                     , a
                         [ href <|
                             "/songs/vertical/"
                                 ++ String.fromInt song.rowid
-                        , buttonStyle [ px_2, align_top, font_black ]
+                        , buttonStyle [ p_0_dot_5 ]
                         ]
-                        [ span
-                            [ css [ relative, bottom_0_dot_5 ] ]
-                            [ text "↕" ]
-                        ]
+                        [ arrowIconVert [] ]
                     ]
             ]
         , tdSty [] [ text <| Maybe.withDefault "" song.instrumentation ]

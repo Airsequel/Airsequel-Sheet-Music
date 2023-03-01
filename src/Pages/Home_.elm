@@ -210,8 +210,15 @@ viewSong song =
                 [ text song.name ]
             ]
         , tdSty [] [ text <| Maybe.withDefault "" song.interpreter ]
-        , tdSty [] [ text <| String.fromInt song.numberOfFiles ]
         , tdSty []
+            [ text <|
+                if song.filetypes == Just "pdf" then
+                    ""
+
+                else
+                    String.fromInt song.numberOfFiles
+            ]
+        , tdSty [ px_1 ]
             [ if song.numberOfFiles == 0 then
                 text ""
 
@@ -233,7 +240,6 @@ viewSong song =
                 div
                     [ css
                         [ flex
-                        , flex_wrap
                         , gap_1
                         , justify_center
                         ]
@@ -267,6 +273,24 @@ viewSong song =
 viewSongsTable : List Song -> Html Msg
 viewSongsTable songs =
     let
+        documentIcon styles =
+            Svg.svg
+                [ viewBox "0 0 24 24"
+                , css styles
+                ]
+                [ Svg.path
+                    [ d <|
+                        "M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2"
+                            ++ "h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4"
+                            ++ "h7v5h5v11H6zm10-9h-4v3.88"
+                            ++ "c-.36-.24-.79-.38-1.25-.38-1.24 0"
+                            ++ "-2.25 1.01-2.25 2.25"
+                            ++ "S9.51 19 10.75 19 13 17.99 13 16.75"
+                            ++ "V13h3v-2z"
+                    ]
+                    []
+                ]
+
         thSty additions =
             th
                 [ css <|
@@ -283,7 +307,7 @@ viewSongsTable songs =
                 [ tr [ css [ bg_color blue_100 ] ]
                     [ thSty [] [ text "Song" ]
                     , thSty [] [ text "Interpreter" ]
-                    , thSty [] [ text "#" ]
+                    , thSty [ py_0, px_0_dot_5 ] [ documentIcon [] ]
                     , thSty [] [ text "Open" ]
                     , thSty [] [ text "Instrumentation" ]
                     , thSty [] [ text "Tempo" ]

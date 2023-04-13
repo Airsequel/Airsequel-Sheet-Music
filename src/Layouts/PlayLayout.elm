@@ -103,6 +103,7 @@ viewImage readDirection readonlyId file =
                 ([ block
                  , border_solid
                  , border_color orange_500
+                 , p_2
                  ]
                     ++ (case readDirection of
                             ReadHorizontal ->

@@ -202,21 +202,13 @@ viewSong song =
     in
     tr
         []
-        [ tdSty []
+        [ tdSty [] [ text <| Maybe.withDefault "" song.interpreter ]
+        , tdSty []
             [ a
                 [ href <| "/songs/" ++ String.fromInt song.rowid
                 , css [ underline, text_color blue_800 ]
                 ]
                 [ text song.name ]
-            ]
-        , tdSty [] [ text <| Maybe.withDefault "" song.interpreter ]
-        , tdSty []
-            [ text <|
-                if song.filetypes == Just "pdf" then
-                    ""
-
-                else
-                    String.fromInt song.numberOfFiles
             ]
         , tdSty [ px_1 ]
             [ if song.numberOfFiles == 0 then
@@ -264,6 +256,14 @@ viewSong song =
                         [ arrowIconVert [] ]
                     ]
             ]
+        , tdSty []
+            [ text <|
+                if song.filetypes == Just "pdf" then
+                    ""
+
+                else
+                    String.fromInt song.numberOfFiles
+            ]
         , tdSty [] [ text <| Maybe.withDefault "" song.instrumentation ]
         , tdSty [ text_center ] [ text <| Maybe.withDefault "" song.tempo ]
         , tdSty [ text_center ] [ text <| Maybe.withDefault "" song.key ]
@@ -305,10 +305,10 @@ viewSongsTable songs =
         tableHead =
             thead [] <|
                 [ tr [ css [ bg_color blue_100 ] ]
-                    [ thSty [] [ text "Song" ]
-                    , thSty [] [ text "Interpreter" ]
-                    , thSty [ py_0, px_0_dot_5 ] [ documentIcon [] ]
+                    [ thSty [] [ text "Interpreter" ]
+                    , thSty [] [ text "Song" ]
                     , thSty [] [ text "Open" ]
+                    , thSty [ py_0, px_0_dot_5 ] [ documentIcon [] ]
                     , thSty [] [ text "Instrumentation" ]
                     , thSty [] [ text "Tempo" ]
                     , thSty [] [ text "Key" ]
@@ -344,42 +344,60 @@ view sharedModel model =
                 ]
                 [ Css.Global.global globalStyles
                 , nav
-                    [ css
-                        [ flex
-                        , flex_col
-                        , sm [ flex_row ]
-                        , pb_8
-                        ]
-                    ]
-                    (h1
+                    [ css [ pb_4 ] ]
+                    [ div
                         [ css
-                            [ font_bold
-                            , text_3xl
-                            , mr_4
-                            , inline_block
-                            , text_color blue_800
-                            , grow
+                            [ flex
+                            , flex_col
+                            , sm [ flex_row ]
+                            , pb_4
                             ]
                         ]
-                        [ text "Airsequel Sheet Music" ]
-                        :: (if
-                                sharedModel.readonlyId
-                                    /= Nothing
-                                    && sharedModel.readonlyId
-                                    /= Just ""
-                            then
-                                [ div [ css [ pt_1_dot_5 ] ]
-                                    [ label
-                                        [ css [ text_color gray_400 ] ]
-                                        [ text "Read-Only ID: " ]
-                                    , viewReadonlyIdForm sharedModel model
-                                    ]
+                        [ h1
+                            [ css
+                                [ font_bold
+                                , text_3xl
+                                , mr_4
+                                , inline_block
+                                , text_color blue_800
+                                , grow
+                                ]
+                            ]
+                            [ text "Airsequel Sheet Music" ]
+                        , if
+                            sharedModel.readonlyId
+                                /= Nothing
+                                && sharedModel.readonlyId
+                                /= Just ""
+                          then
+                            div
+                                [ css [ pt_1_dot_5 ] ]
+                                [ label
+                                    [ css [ text_color gray_400 ] ]
+                                    [ text "Read-Only ID: " ]
+                                , viewReadonlyIdForm sharedModel model
                                 ]
 
-                            else
-                                []
-                           )
-                    )
+                          else
+                            text ""
+                        ]
+                    , case sharedModel.songsResult of
+                        Ok gqlRes ->
+                            case gqlRes.data of
+                                Just songsData ->
+                                    p [ css [ font_semibold ] ]
+                                        [ text <|
+                                            "Number of songs: "
+                                                ++ String.fromInt
+                                                    (List.length songsData.root)
+                                        ]
+
+                                Nothing ->
+                                    text ""
+
+                        Err _ ->
+                            text ""
+                    ]
                 , div []
                     (div []
                         (model.errors
@@ -396,6 +414,7 @@ view sharedModel model =
                                             , px_4
                                             , py_2
                                             , mb_4
+                                            , max_w_xl
                                             ]
                                         ]
                                         [ text error ]

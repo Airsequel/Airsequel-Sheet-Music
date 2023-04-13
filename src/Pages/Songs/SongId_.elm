@@ -2,6 +2,7 @@ module Pages.Songs.SongId_ exposing (Model, Msg, page)
 
 import Effect exposing (Effect)
 import GraphQL
+import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
@@ -19,20 +20,20 @@ import View exposing (View)
 
 page : Shared.Model -> Route { songId : String } -> Page Model Msg
 page sharedModel route =
+    let
+        document =
+            view sharedModel
+    in
     Page.new
         { init = init sharedModel route
         , update = update
         , subscriptions = \_ -> Sub.none
-        , view = view sharedModel
+        , view = document
         }
         |> Page.withLayout
-            (\_ ->
+            (\model ->
                 Layouts.Default
-                    { default =
-                        { title =
-                            "Song " ++ route.params.songId
-                        }
-                    }
+                    { default = { title = (document model).title } }
             )
 
 
@@ -161,16 +162,16 @@ viewSong _ song =
 
 view : Shared.Model -> Model -> View Msg
 view sharedModel model =
-    { title = "Pages.Songs.SongId_"
-    , body =
-        [ toUnstyled <|
-            div []
-                (case model.songsResult of
-                    Ok gqlRes ->
-                        case gqlRes.data of
-                            Just songs ->
-                                case songs.root of
-                                    song :: _ ->
+    case model.songsResult of
+        Ok gqlRes ->
+            case gqlRes.data of
+                Just songs ->
+                    case songs.root of
+                        song :: _ ->
+                            { title = song.name
+                            , body =
+                                [ toUnstyled <|
+                                    div []
                                         [ viewSong
                                             (Maybe.withDefault
                                                 ""
@@ -178,15 +179,20 @@ view sharedModel model =
                                             )
                                             song
                                         ]
+                                ]
+                            }
 
-                                    _ ->
-                                        [ text "Multiple songs" ]
+                        _ ->
+                            { title = "Error: Multiple songs"
+                            , body = [ Html.text "Error: Multiple songs" ]
+                            }
 
-                            Nothing ->
-                                [ text "Loading …" ]
+                Nothing ->
+                    { title = "Loading …"
+                    , body = [ Html.text "Loading …" ]
+                    }
 
-                    Err error ->
-                        [ viewHttpError error ]
-                )
-        ]
-    }
+        Err error ->
+            { title = "Error"
+            , body = [ toUnstyled <| viewHttpError error ]
+            }

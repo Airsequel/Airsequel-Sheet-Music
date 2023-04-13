@@ -7,6 +7,7 @@ module Layouts.PlayLayout exposing
 
 import Effect exposing (Effect(..))
 import GraphQL
+import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
@@ -181,51 +182,34 @@ viewSong readDirection sharedModel song =
             )
 
 
-viewPages : Settings -> Shared.Model -> Html msg
-viewPages settings sharedModel =
-    case settings.songsResult of
-        Ok gqlRes ->
-            case gqlRes.data of
-                Just songs ->
-                    case songs.root of
-                        song :: _ ->
-                            div
-                                [ css
-                                    [ bg_color white
+viewPages : Settings -> Shared.Model -> Song -> Html msg
+viewPages settings sharedModel song =
+    div
+        [ css
+            [ bg_color white
 
-                                    -- Make bg color cover the whole page:
-                                    , overflow_scroll
-                                    , if
-                                        (settings.readDirection
-                                            == ReadHorizontal
-                                        )
-                                            || filesAreType "pdf" song.files
-                                      then
-                                        h_full
+            -- Make bg color cover the whole page:
+            , overflow_scroll
+            , if
+                (settings.readDirection
+                    == ReadHorizontal
+                )
+                    || filesAreType "pdf" song.files
+              then
+                h_full
 
-                                      else
-                                        w_full
-                                    ]
-                                ]
-                                [ viewSong
-                                    settings.readDirection
-                                    (Maybe.withDefault
-                                        ""
-                                        sharedModel.readonlyId
-                                    )
-                                    song
-                                ]
-
-                        _ ->
-                            div [] [ text "Multiple songs" ]
-
-                Nothing ->
-                    div
-                        [ css [ text_center, font_sans, pt_8 ] ]
-                        [ text "Loading …" ]
-
-        Err httpError ->
-            viewHttpError httpError
+              else
+                w_full
+            ]
+        ]
+        [ viewSong
+            settings.readDirection
+            (Maybe.withDefault
+                ""
+                sharedModel.readonlyId
+            )
+            song
+        ]
 
 
 view :
@@ -238,9 +222,35 @@ view :
         }
     -> View mainMsg
 view settings sharedModel _ =
-    { title = "Play View"
-    , body =
-        [ toUnstyled <|
-            viewPages settings sharedModel
-        ]
-    }
+    case settings.songsResult of
+        Ok gqlRes ->
+            case gqlRes.data of
+                Just songs ->
+                    case songs.root of
+                        song :: _ ->
+                            { title = song.name ++ " | Play View"
+                            , body =
+                                [ toUnstyled <|
+                                    viewPages settings sharedModel song
+                                ]
+                            }
+
+                        _ ->
+                            { title = "Error: Multiple songs"
+                            , body = [ Html.text "Error: Multiple songs" ]
+                            }
+
+                Nothing ->
+                    { title = "Loading …"
+                    , body =
+                        [ toUnstyled <|
+                            div
+                                [ css [ text_center, font_sans, pt_8 ] ]
+                                [ text "Loading …" ]
+                        ]
+                    }
+
+        Err httpError ->
+            { title = "Error"
+            , body = [ toUnstyled <| viewHttpError httpError ]
+            }

@@ -108,10 +108,14 @@ viewImage readDirection readonlyId file =
                  ]
                     ++ (case readDirection of
                             ReadHorizontal ->
-                                [ max_h_full
-                                , max_w_full
+                                [ w_full
+                                , h_full
                                 , align_top
                                 , border_r_2
+                                , object_contain
+
+                                -- TODO: Make editable via UI
+                                , object_center
                                 ]
 
                             ReadVertical ->

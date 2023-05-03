@@ -8,8 +8,9 @@ start:
 	npx elm-land server
 
 
-dist: elm.json elm-land.json src static
+dist: elm.json elm-land.json $(shell find src) $(shell find static)
 	npx elm-land build
+	touch dist  # Update timestamp
 
 
 .PHONY: deploy

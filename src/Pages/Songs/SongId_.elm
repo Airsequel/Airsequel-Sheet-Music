@@ -98,37 +98,41 @@ viewSong _ song =
                 , border
                 , border_solid
                 , border_color blue_800
+                , mb_2
                 ]
 
         keySpan value =
             span
-                [ css [ inline_block, w_40, text_right, mr_2 ] ]
+                [ css [ inline_block, w_36, text_right, mr_2, shrink_0 ] ]
                 [ text value ]
+
+        listItem =
+            li [ css [ flex ] ]
     in
     div []
         [ h2 [ css [ text_3xl, mb_8 ] ] [ text song.name ]
         , ul [ css [ mb_8 ] ]
-            [ li []
+            [ listItem
                 [ keySpan "Interpreter:"
                 , strong []
                     [ text <| Maybe.withDefault "-" song.interpreter ]
                 ]
-            , li []
+            , listItem
                 [ keySpan "Instrumentation:"
                 , strong []
                     [ text <| Maybe.withDefault "-" song.instrumentation ]
                 ]
-            , li []
+            , listItem
                 [ keySpan "Tempo:"
                 , strong []
                     [ text <| Maybe.withDefault "-" song.tempo ]
                 ]
-            , li []
+            , listItem
                 [ keySpan "Key:"
                 , strong []
                     [ text <| Maybe.withDefault "-" song.key ]
                 ]
-            , li []
+            , listItem
                 [ keySpan "Number of Pages: "
                 , strong []
                     [ text <| String.fromInt <| List.length song.files ]

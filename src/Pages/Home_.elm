@@ -294,7 +294,8 @@ viewSongsTable songs =
                     [ thSty [] [ text "Interpreter" ]
                     , thSty [] [ text "Song" ]
                     , thSty [] [ text "Open" ]
-                    , thSty [ py_0, px_0_dot_5 ] [ documentIcon [] ]
+                    , thSty [ py_0, px_0_dot_5 ]
+                        [ documentIcon [ inline_block, h_6 ] ]
                     , thSty [] [ text "Instrumentation" ]
                     , thSty [] [ text "Tempo" ]
                     , thSty [] [ text "Key" ]
@@ -319,8 +320,6 @@ view sharedModel model =
             main_
                 [ css
                     [ bg_color white
-                    , py_12
-                    , px_10
                     , max_w_5xl
                     , mx_auto
                     , min_h_full
@@ -330,7 +329,12 @@ view sharedModel model =
                 ]
                 [ Css.Global.global globalStyles
                 , nav
-                    [ css [ pb_4 ] ]
+                    [ css
+                        [ px_10
+                        , pt_12
+                        , pb_4
+                        ]
+                    ]
                     [ div
                         [ css
                             [ flex
@@ -384,7 +388,7 @@ view sharedModel model =
                         Err _ ->
                             text ""
                     ]
-                , div []
+                , div [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
                     (div []
                         (model.errors
                             |> List.map

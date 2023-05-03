@@ -17,7 +17,7 @@ import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
 import Types.Song exposing (Song)
-import Utils exposing (host, viewHttpError)
+import Utils exposing (arrowIconVert, host, viewHttpError)
 import View exposing (View)
 
 
@@ -215,20 +215,6 @@ viewSong song =
                 text ""
 
               else
-                let
-                    arrowIconVert styles =
-                        Svg.svg
-                            [ viewBox "0 0 24 24"
-                            , css <| [ block, w_full, h_full ] ++ styles
-                            ]
-                            [ Svg.path
-                                [ d <|
-                                    "M13 6.99h3L12 3 8 6.99h3v10.02"
-                                        ++ "H8L12 21l4-3.99h-3z"
-                                ]
-                                []
-                            ]
-                in
                 div
                     [ css
                         [ flex

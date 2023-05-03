@@ -14,7 +14,7 @@ import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
 import Types.Song exposing (Song)
-import Utils exposing (viewHttpError)
+import Utils exposing (arrowIconVert, viewHttpError)
 import View exposing (View)
 
 
@@ -150,12 +150,16 @@ viewSong _ song =
                             )
                         , buttonCss
                         ]
-                        [ text "↔ Horizontal View" ]
+                        [ arrowIconVert [ inline_block, w_6, h_6, rotate_90 ]
+                        , span [] [ text "Horizontal View" ]
+                        ]
                 , a
                     [ href ("/songs/vertical/" ++ String.fromInt song.rowid)
                     , buttonCss
                     ]
-                    [ text "↕ Vertical View" ]
+                    [ arrowIconVert [ inline_block, w_6, h_6 ]
+                    , span [] [ text "Vertical View" ]
+                    ]
                 ]
         ]
 

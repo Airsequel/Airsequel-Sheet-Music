@@ -15,7 +15,7 @@ import Tailwind.Utilities exposing (..)
 
 host : String
 host =
-    "https://airsequel.fly.dev"
+    "https://www.airsequel.com"
 
 
 viewHttpError : Http.Error -> Html msg

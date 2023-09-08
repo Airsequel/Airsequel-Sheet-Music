@@ -21,6 +21,11 @@ import Utils exposing (arrowIconVert, host, viewHttpError)
 import View exposing (View)
 
 
+teamplateDbReadonlyId : String
+teamplateDbReadonlyId =
+    "6mcw4qrv1wvtwn65"
+
+
 page : Shared.Model -> Route () -> Page Model Msg
 page sharedModel _ =
     Page.new
@@ -151,7 +156,11 @@ viewGettingStarted sharedModel model =
                     """
                 ]
             , a
-                [ href <| host ++ "/readonly/4h0ffwwj66ge37e1/duplicate"
+                [ href <|
+                    host
+                        ++ "/readonly/"
+                        ++ teamplateDbReadonlyId
+                        ++ "/duplicate"
                 , target "_blank"
                 , css
                     [ block

@@ -75,11 +75,16 @@ update msg model =
             )
 
         SubmittedReadonlyId ->
-            if
-                (model.partialReadonlyId |> Maybe.map String.length)
-                    /= Just 16
-                    && ((model.partialReadonlyId |> Maybe.map String.isEmpty) == Just False)
-            then
+            let
+                lengthNot16 =
+                    (model.partialReadonlyId |> Maybe.map String.length)
+                        /= Just 16
+
+                stringNotEmpty =
+                    (model.partialReadonlyId |> Maybe.map String.isEmpty)
+                        == Just False
+            in
+            if lengthNot16 && stringNotEmpty then
                 ( { model
                     | errors = [ """
                         Read-only ID must be 16 characters long.
@@ -385,6 +390,28 @@ view sharedModel model =
 
             else
                 text ""
+
+        formatGqlErrors gqlErrors =
+            div [ css [ text_color red_800 ] ]
+                [ p
+                    [ css [ font_bold ] ]
+                    [ text <|
+                        "Errors: "
+                            ++ (gqlErrors
+                                    |> List.map
+                                        (\err -> err.message)
+                                    |> String.join ", "
+                               )
+                    ]
+                , br [] []
+                , p []
+                    [ text """
+                        Please check that the read-only ID is really from a
+                        copy of the sheet music template database and has
+                        the correct / up-to-date schema.
+                        """
+                    ]
+                ]
     in
     { title = "Airsequel Sheet Music"
     , body =
@@ -407,7 +434,7 @@ view sharedModel model =
                         , pb_4
                         ]
                     ]
-                    [ div
+                    ([ div
                         [ css
                             [ flex
                             , flex_col
@@ -438,23 +465,35 @@ view sharedModel model =
                                     model
                                 ]
                         ]
-                    , case sharedModel.songsResult of
-                        Ok gqlRes ->
-                            case gqlRes.data of
-                                Just songsData ->
-                                    p [ css [ font_semibold ] ]
-                                        [ text <|
-                                            "Number of songs: "
-                                                ++ String.fromInt
-                                                    (List.length songsData.root)
-                                        ]
+                     ]
+                        ++ (case sharedModel.songsResult of
+                                Ok gqlRes ->
+                                    [ case gqlRes.data of
+                                        Just songsData ->
+                                            p [ css [ font_semibold ] ]
+                                                [ text <|
+                                                    "Number of songs: "
+                                                , text
+                                                    (songsData.root
+                                                        |> List.length
+                                                        |> String.fromInt
+                                                    )
+                                                ]
 
-                                Nothing ->
-                                    text ""
+                                        Nothing ->
+                                            text ""
+                                    , case gqlRes.errors of
+                                        Just gqlErrors ->
+                                            formatGqlErrors gqlErrors
 
-                        Err _ ->
-                            text ""
-                    ]
+                                        Nothing ->
+                                            text ""
+                                    ]
+
+                                Err error ->
+                                    [ viewHttpError error ]
+                           )
+                    )
                 , div
                     [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
                     ([ renderIf (not idIsProvided) <|
@@ -470,54 +509,62 @@ view sharedModel model =
                             , text "."
                             ]
                      ]
-                        ++ (case sharedModel.songsResult of
+                        ++ (let
+                                readonlyIdEmpty =
+                                    (sharedModel.readonlyId == Nothing)
+                                        || (sharedModel.readonlyId == Just "")
+
+                                ifNothing valMb valDefault =
+                                    case valMb of
+                                        Nothing ->
+                                            valDefault
+
+                                        _ ->
+                                            []
+
+                                errorPara errorTxt =
+                                    p
+                                        [ css
+                                            [ bg_color red_200
+                                            , border
+                                            , border_solid
+                                            , border_color red_800
+                                            , text_color red_800
+                                            , rounded
+                                            , px_4
+                                            , py_2
+                                            , mb_4
+                                            , max_w_xl
+                                            ]
+                                        ]
+                                        [ text errorTxt ]
+                            in
+                            (case sharedModel.songsResult of
                                 Ok gqlRes ->
                                     case gqlRes.data of
                                         Just songsData ->
                                             [ viewSongsTable songsData.root ]
 
                                         Nothing ->
-                                            if
-                                                sharedModel.readonlyId
-                                                    == Nothing
-                                                    || sharedModel.readonlyId
-                                                    == Just ""
-                                            then
+                                            if readonlyIdEmpty then
                                                 viewGettingStarted
                                                     sharedModel
                                                     model
 
                                             else
-                                                [ div
-                                                    [ css [ text_center ] ]
-                                                    [ text "Loading …" ]
-                                                ]
+                                                ifNothing gqlRes.errors
+                                                    [ div
+                                                        [ css [ text_center ] ]
+                                                        [ text "Loading …" ]
+                                                    ]
 
                                 Err httpError ->
                                     [ viewHttpError httpError ]
+                            )
+                                ++ [ div []
+                                        (model.errors |> List.map errorPara)
+                                   ]
                            )
-                        ++ [ div []
-                                (model.errors
-                                    |> List.map
-                                        (\error ->
-                                            p
-                                                [ css
-                                                    [ bg_color red_200
-                                                    , border
-                                                    , border_solid
-                                                    , border_color red_800
-                                                    , text_color red_800
-                                                    , rounded
-                                                    , px_4
-                                                    , py_2
-                                                    , mb_4
-                                                    , max_w_xl
-                                                    ]
-                                                ]
-                                                [ text error ]
-                                        )
-                                )
-                           ]
                     )
                 ]
         ]

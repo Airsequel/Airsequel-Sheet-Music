@@ -42,7 +42,7 @@ page sharedModel _ =
 
 type alias Model =
     { sharedModel : Shared.Model
-    , partialReadonlyId : String
+    , partialReadonlyId : Maybe String
     , errors : List String
     }
 
@@ -50,7 +50,7 @@ type alias Model =
 init : Shared.Model -> () -> ( Model, Effect Msg )
 init sharedModel () =
     ( { sharedModel = sharedModel
-      , partialReadonlyId = ""
+      , partialReadonlyId = Nothing
       , errors = []
       }
     , Effect.none
@@ -70,15 +70,15 @@ update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
         EnteredReadonlyId readonlyId ->
-            ( { model | partialReadonlyId = readonlyId }
+            ( { model | partialReadonlyId = Just readonlyId }
             , Effect.none
             )
 
         SubmittedReadonlyId ->
             if
-                String.length model.partialReadonlyId
-                    /= 16
-                    && not (String.isEmpty model.partialReadonlyId)
+                (model.partialReadonlyId |> Maybe.map String.length)
+                    /= Just 16
+                    && ((model.partialReadonlyId |> Maybe.map String.isEmpty) == Just False)
             then
                 ( { model
                     | errors = [ """
@@ -91,9 +91,14 @@ update msg model =
                 )
 
             else
-                ( { model | partialReadonlyId = "", errors = [] }
-                , SendSharedMsg <|
-                    Shared.Msg.SubmittedReadonlyId model.partialReadonlyId
+                ( { model | partialReadonlyId = Nothing, errors = [] }
+                , case model.partialReadonlyId of
+                    Just val ->
+                        SendSharedMsg <|
+                            Shared.Msg.SubmittedReadonlyId val
+
+                    Nothing ->
+                        Effect.none
                 )
 
 
@@ -121,14 +126,19 @@ viewReadonlyIdForm sharedModel model =
         ]
         [ input
             [ type_ "text"
-            , value model.partialReadonlyId
-            , placeholder <|
-                case sharedModel.readonlyId of
-                    Just id ->
-                        id
+            , placeholder "Read-Only Database ID"
+            , value <|
+                case model.partialReadonlyId of
+                    Just val ->
+                        val
 
                     Nothing ->
-                        "Airsequel read-only ID"
+                        case sharedModel.readonlyId of
+                            Just id ->
+                                id
+
+                            Nothing ->
+                                "Airsequel read-only ID"
             , onInput EnteredReadonlyId
             , css
                 [ inline_block
@@ -138,6 +148,7 @@ viewReadonlyIdForm sharedModel model =
                 , rounded
                 , px_2
                 , py_1
+                , text_color gray_500
                 ]
             ]
             []
@@ -370,10 +381,10 @@ view sharedModel model =
                                 /= Just ""
                           then
                             div
-                                [ css [ pt_1_dot_5 ] ]
+                                [ css [ pt_1_dot_5, text_sm ] ]
                                 [ label
                                     [ css [ text_color gray_400 ] ]
-                                    [ text "Read-Only ID: " ]
+                                    [ text "ID: " ]
                                 , viewReadonlyIdForm sharedModel model
                                 ]
 

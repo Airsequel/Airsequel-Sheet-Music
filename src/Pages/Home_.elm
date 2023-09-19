@@ -91,15 +91,27 @@ update msg model =
                 )
 
             else
-                ( { model | partialReadonlyId = Nothing, errors = [] }
-                , case model.partialReadonlyId of
-                    Just val ->
-                        SendSharedMsg <|
-                            Shared.Msg.SubmittedReadonlyId val
-
+                let
+                    errorRes =
+                        ( { model
+                            | errors =
+                                [ "Please enter a read-only ID." ]
+                          }
+                        , Effect.none
+                        )
+                in
+                case model.partialReadonlyId of
                     Nothing ->
-                        Effect.none
-                )
+                        errorRes
+
+                    Just "" ->
+                        errorRes
+
+                    Just val ->
+                        ( { model | partialReadonlyId = Nothing, errors = [] }
+                        , SendSharedMsg <|
+                            Shared.Msg.SubmittedReadonlyId val
+                        )
 
 
 
@@ -118,8 +130,13 @@ buttonStyle add =
             ++ add
 
 
-viewReadonlyIdForm : Shared.Model -> Model -> Html Msg
-viewReadonlyIdForm sharedModel model =
+type SubmitButtonOption
+    = HasSubmitButton
+    | NoSubmitButton
+
+
+viewReadonlyIdForm : SubmitButtonOption -> Shared.Model -> Model -> Html Msg
+viewReadonlyIdForm hasSubmitButton sharedModel model =
     Html.Styled.form
         [ onSubmit SubmittedReadonlyId
         , css [ inline_block ]
@@ -138,7 +155,7 @@ viewReadonlyIdForm sharedModel model =
                                 id
 
                             Nothing ->
-                                "Airsequel read-only ID"
+                                ""
             , onInput EnteredReadonlyId
             , css
                 [ inline_block
@@ -152,6 +169,27 @@ viewReadonlyIdForm sharedModel model =
                 ]
             ]
             []
+        , case hasSubmitButton of
+            HasSubmitButton ->
+                input
+                    [ type_ "submit"
+                    , css
+                        [ inline_block
+                        , border
+                        , border_solid
+                        , border_color gray_400
+                        , rounded
+                        , px_2
+                        , py_1
+                        , text_color gray_500
+                        , ml_2
+                        , cursor_pointer
+                        ]
+                    ]
+                    [ text "Submit" ]
+
+            NoSubmitButton ->
+                text ""
         ]
 
 
@@ -197,10 +235,10 @@ viewGettingStarted sharedModel model =
             [ p [ css [ mb_4 ] ]
                 [ text """
                     Find the read-only ID in the "Database" tab,
-                    post it here in the input field, and press enter:
+                    post it here in the input field, and submit:
                     """
                 ]
-            , viewReadonlyIdForm sharedModel model
+            , viewReadonlyIdForm HasSubmitButton sharedModel model
             ]
         ]
     ]
@@ -334,6 +372,20 @@ viewSongsTable songs =
 
 view : Shared.Model -> Model -> View Msg
 view sharedModel model =
+    let
+        idIsProvided =
+            sharedModel.readonlyId
+                /= Nothing
+                && sharedModel.readonlyId
+                /= Just ""
+
+        renderIf boolean html =
+            if boolean then
+                html
+
+            else
+                text ""
+    in
     { title = "Airsequel Sheet Music"
     , body =
         [ toUnstyled <|
@@ -374,22 +426,17 @@ view sharedModel model =
                                 ]
                             ]
                             [ text "Airsequel Sheet Music" ]
-                        , if
-                            sharedModel.readonlyId
-                                /= Nothing
-                                && sharedModel.readonlyId
-                                /= Just ""
-                          then
+                        , renderIf idIsProvided <|
                             div
                                 [ css [ pt_1_dot_5, text_sm ] ]
                                 [ label
                                     [ css [ text_color gray_400 ] ]
                                     [ text "ID: " ]
-                                , viewReadonlyIdForm sharedModel model
+                                , viewReadonlyIdForm
+                                    NoSubmitButton
+                                    sharedModel
+                                    model
                                 ]
-
-                          else
-                            text ""
                         ]
                     , case sharedModel.songsResult of
                         Ok gqlRes ->
@@ -408,29 +455,22 @@ view sharedModel model =
                         Err _ ->
                             text ""
                     ]
-                , div [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
-                    (div []
-                        (model.errors
-                            |> List.map
-                                (\error ->
-                                    p
-                                        [ css
-                                            [ bg_color red_200
-                                            , border
-                                            , border_solid
-                                            , border_color red_800
-                                            , text_color red_800
-                                            , rounded
-                                            , px_4
-                                            , py_2
-                                            , mb_4
-                                            , max_w_xl
-                                            ]
-                                        ]
-                                        [ text error ]
-                                )
-                        )
-                        :: (case sharedModel.songsResult of
+                , div
+                    [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
+                    ([ renderIf (not idIsProvided) <|
+                        p
+                            [ css [ mb_8 ] ]
+                            [ text "Sheet music management app powered by "
+                            , a
+                                [ href "https://www.airsequel.com"
+                                , css [ underline, text_color blue_800 ]
+                                , target "_blank"
+                                ]
+                                [ text "Airsequel" ]
+                            , text "."
+                            ]
+                     ]
+                        ++ (case sharedModel.songsResult of
                                 Ok gqlRes ->
                                     case gqlRes.data of
                                         Just songsData ->
@@ -443,7 +483,9 @@ view sharedModel model =
                                                     || sharedModel.readonlyId
                                                     == Just ""
                                             then
-                                                viewGettingStarted sharedModel model
+                                                viewGettingStarted
+                                                    sharedModel
+                                                    model
 
                                             else
                                                 [ div
@@ -454,6 +496,28 @@ view sharedModel model =
                                 Err httpError ->
                                     [ viewHttpError httpError ]
                            )
+                        ++ [ div []
+                                (model.errors
+                                    |> List.map
+                                        (\error ->
+                                            p
+                                                [ css
+                                                    [ bg_color red_200
+                                                    , border
+                                                    , border_solid
+                                                    , border_color red_800
+                                                    , text_color red_800
+                                                    , rounded
+                                                    , px_4
+                                                    , py_2
+                                                    , mb_4
+                                                    , max_w_xl
+                                                    ]
+                                                ]
+                                                [ text error ]
+                                        )
+                                )
+                           ]
                     )
                 ]
         ]

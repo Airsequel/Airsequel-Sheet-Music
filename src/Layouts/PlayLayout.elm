@@ -1,7 +1,7 @@
 module Layouts.PlayLayout exposing
     ( Model
     , Msg
-    , Settings
+    , Props
     , layout
     )
 
@@ -23,14 +23,14 @@ import Utils exposing (host, viewHttpError)
 import View exposing (View)
 
 
-type alias Settings =
+type alias Props =
     { songId : String
     , readDirection : ReadDirection
     , songsResult : GraphQL.Response (List Song)
     }
 
 
-layout : Settings -> Shared.Model -> Route () -> Layout Model Msg mainMsg
+layout : Props -> Shared.Model -> Route () -> Layout () Model Msg contentMsg
 layout settings sharedModel _ =
     Layout.new
         { init = init
@@ -186,7 +186,7 @@ viewSong readDirection sharedModel song =
             )
 
 
-viewPages : Settings -> Shared.Model -> Song -> Html msg
+viewPages : Props -> Shared.Model -> Song -> Html msg
 viewPages settings sharedModel song =
     div
         [ css
@@ -217,10 +217,10 @@ viewPages settings sharedModel song =
 
 
 view :
-    Settings
+    Props
     -> Shared.Model
     ->
-        { fromMsg : Msg -> mainMsg
+        { toContentMsg : Msg -> mainMsg
         , content : View mainMsg
         , model : Model
         }

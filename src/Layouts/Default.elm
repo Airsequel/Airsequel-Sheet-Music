@@ -1,7 +1,7 @@
 module Layouts.Default exposing
     ( Model
     , Msg
-    , Settings
+    , Props
     , layout
     )
 
@@ -20,11 +20,11 @@ import Tailwind.Utilities exposing (..)
 import View exposing (View)
 
 
-type alias Settings =
+type alias Props =
     { title : String }
 
 
-layout : Settings -> Shared.Model -> Route () -> Layout Model Msg mainMsg
+layout : Props -> Shared.Model -> Route () -> Layout () Model Msg contentMsg
 layout settings _ _ =
     Layout.new
         { init = init
@@ -76,9 +76,9 @@ subscriptions _ =
 
 
 view :
-    Settings
+    Props
     ->
-        { fromMsg : Msg -> mainMsg
+        { toContentMsg : Msg -> mainMsg
         , content : View mainMsg
         , model : Model
         }

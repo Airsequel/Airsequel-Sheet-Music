@@ -26,11 +26,9 @@ page sharedModel route =
         |> Page.withLayout
             (\model ->
                 Layouts.PlayLayout
-                    { playLayout =
-                        { songId = route.params.songId
-                        , readDirection = ReadVertical
-                        , songsResult = model.songsResult
-                        }
+                    { songId = route.params.songId
+                    , readDirection = ReadVertical
+                    , songsResult = model.songsResult
                     }
             )
 

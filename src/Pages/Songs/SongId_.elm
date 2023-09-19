@@ -33,7 +33,7 @@ page sharedModel route =
         |> Page.withLayout
             (\model ->
                 Layouts.Default
-                    { default = { title = (document model).title } }
+                    { title = (document model).title }
             )
 
 

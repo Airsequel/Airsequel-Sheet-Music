@@ -3,12 +3,16 @@ help: makefile
 	@tail -n +4 makefile | grep ".PHONY"
 
 
+node_modules: package.json package-lock.json
+	if test ! -d $@; then npm install; fi
+
+
 .PHONY: start
-start:
+start: node_modules elm.json elm-land.json
 	npx elm-land server
 
 
-dist: elm.json elm-land.json $(shell find src) $(shell find static)
+dist: node_modules elm.json elm-land.json $(shell find src) $(shell find static)
 	npx elm-land build
 	touch dist  # Update timestamp
 

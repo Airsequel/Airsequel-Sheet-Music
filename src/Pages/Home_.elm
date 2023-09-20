@@ -422,8 +422,8 @@ view sharedModel model =
                     , max_w_5xl
                     , mx_auto
                     , min_h_full
-                    , border_x
                     , border_color gray_400
+                    , lg [ border_x ]
                     ]
                 ]
                 [ Css.Global.global globalStyles

@@ -18,6 +18,7 @@ type alias Song =
     , numberOfFiles : Int
     , filetypes : Maybe String
     , files : List File
+    , isFavorite : Bool
     }
 
 
@@ -63,6 +64,7 @@ songDecoder withFiles =
             )
         |> JDP.required "filetypes" (JD.maybe JD.string)
         |> JDP.custom (filesDecoder withFiles)
+        |> JDP.required "is_favorite" JD.bool
 
 
 songsDecoder : Bool -> Decoder (List Song)

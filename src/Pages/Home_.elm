@@ -265,7 +265,16 @@ viewSong song =
     in
     tr
         []
-        [ tdSty [] [ text <| Maybe.withDefault "" song.interpreter ]
+        [ tdSty []
+            [ text <|
+                (if song.isFavorite then
+                    "⭐️ "
+
+                 else
+                    ""
+                )
+                    ++ Maybe.withDefault "" song.interpreter
+            ]
         , tdSty []
             [ a
                 [ href <| "/songs/" ++ String.fromInt song.rowid
@@ -369,8 +378,14 @@ viewSongsTable songs =
         [ css [ w_full, bg_color white ] ]
         [ tableHead
         , tbody [] <|
-            (songs
+            ((songs
+                |> List.filter (\song -> song.isFavorite)
                 |> List.map viewSong
+             )
+                ++ (songs
+                        |> List.filter (\song -> not song.isFavorite)
+                        |> List.map viewSong
+                   )
             )
         ]
 

@@ -110,7 +110,16 @@ viewSong _ song =
             li [ css [ flex ] ]
     in
     div []
-        [ h2 [ css [ text_3xl, mb_8 ] ] [ text song.name ]
+        [ h2 [ css [ text_3xl, mb_8 ] ]
+            [ text <|
+                (if song.isFavorite then
+                    "⭐️ "
+
+                 else
+                    ""
+                )
+                    ++ song.name
+            ]
         , ul [ css [ mb_8 ] ]
             [ listItem
                 [ keySpan "Interpreter:"

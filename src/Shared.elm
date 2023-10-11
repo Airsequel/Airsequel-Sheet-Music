@@ -38,6 +38,7 @@ getSongs readonlyId =
                         interpreter
                         numberOfFiles
                         filetypes
+                        is_favorite
                     }
                 }
                 """
@@ -76,6 +77,7 @@ getSongWithFiles readonlyId songId msg =
                     numberOfFiles
                     filetypes
                     files
+                    is_favorite
                 }
             }
             """

@@ -246,6 +246,30 @@ viewGettingStarted sharedModel model =
             , viewReadonlyIdForm HasSubmitButton sharedModel model
             ]
         ]
+    , hr [ css [ mt_16, mb_4 ] ] []
+    , footer
+        [ css
+            [ px_10
+            , py_4
+            , text_sm
+            , text_center
+            , text_color gray_500
+            ]
+        ]
+        [ a
+            [ href "https://github.com/Airsequel/Airsequel-Sheet-Music"
+            , css [ text_color blue_800, Css.hover [ underline ] ]
+            , target "_blank"
+            ]
+            [ text "GitHub" ]
+        , span [ css [ mx_3 ] ] [ text "•" ]
+        , a
+            [ href "https://twitter.com/Airsequel"
+            , css [ text_color blue_800, Css.hover [ underline ] ]
+            , target "_blank"
+            ]
+            [ text "𝕏" ]
+        ]
     ]
 
 
@@ -449,7 +473,7 @@ view sharedModel model =
                         , pb_4
                         ]
                     ]
-                    ([ div
+                    (div
                         [ css
                             [ flex
                             , flex_col
@@ -480,8 +504,7 @@ view sharedModel model =
                                     model
                                 ]
                         ]
-                     ]
-                        ++ (case sharedModel.songsResult of
+                        :: (case sharedModel.songsResult of
                                 Ok gqlRes ->
                                     [ case gqlRes.data of
                                         Just songsData ->
@@ -511,20 +534,28 @@ view sharedModel model =
                     )
                 , div
                     [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
-                    ([ renderIf (not idIsProvided) <|
-                        p
-                            [ css [ mb_8 ] ]
-                            [ text "Sheet music management app powered by "
-                            , a
-                                [ href "https://www.airsequel.com"
-                                , css [ underline, text_color blue_800 ]
-                                , target "_blank"
+                    ((renderIf (not idIsProvided) <|
+                        div []
+                            [ p
+                                [ css [ mb_8 ] ]
+                                [ text "Sheet music management app powered by "
+                                , a
+                                    [ href "https://www.airsequel.com"
+                                    , css [ underline, text_color blue_800 ]
+                                    , target "_blank"
+                                    ]
+                                    [ text "Airsequel" ]
+                                , text "."
                                 ]
-                                [ text "Airsequel" ]
-                            , text "."
+                            , img
+                                [ css [ max_w_lg, shadow_md, mb_8 ]
+                                , src "/landing_page.png"
+                                , alt "Screenshot of landing page"
+                                ]
+                                []
                             ]
-                     ]
-                        ++ (let
+                     )
+                        :: (let
                                 readonlyIdEmpty =
                                     (sharedModel.readonlyId == Nothing)
                                         || (sharedModel.readonlyId == Just "")

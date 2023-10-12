@@ -1,4 +1,4 @@
-module Types.File exposing (..)
+module Types.File exposing (File, fileDecoder)
 
 import Json.Decode as JD exposing (Decoder)
 

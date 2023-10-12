@@ -5,12 +5,10 @@ import GraphQL
 import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
-import Http exposing (Error(..))
 import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
-import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
 import Types.Song exposing (Song)
@@ -84,23 +82,6 @@ update msg model =
 viewSong : String -> Song -> Html msg
 viewSong _ song =
     let
-        buttonCss =
-            css
-                [ inline_block
-                , border
-                , rounded
-                , px_2
-                , py_1
-                , bg_color blue_200
-                , mr_2
-                , no_underline
-                , text_color blue_800
-                , border
-                , border_solid
-                , border_color blue_800
-                , mb_2
-                ]
-
         keySpan value =
             span
                 [ css [ inline_block, w_36, text_right, mr_2, shrink_0 ] ]
@@ -151,6 +132,24 @@ viewSong _ song =
             text ""
 
           else
+            let
+                buttonCss =
+                    css
+                        [ inline_block
+                        , border
+                        , rounded
+                        , px_2
+                        , py_1
+                        , bg_color blue_200
+                        , mr_2
+                        , no_underline
+                        , text_color blue_800
+                        , border
+                        , border_solid
+                        , border_color blue_800
+                        , mb_2
+                        ]
+            in
             div []
                 [ if song.filetypes == Just "pdf" then
                     text ""

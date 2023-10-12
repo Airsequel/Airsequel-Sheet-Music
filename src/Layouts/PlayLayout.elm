@@ -5,12 +5,11 @@ module Layouts.PlayLayout exposing
     , layout
     )
 
-import Effect exposing (Effect(..))
+import Effect exposing (Effect)
 import GraphQL
 import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
-import Http exposing (Error(..))
 import Layout exposing (Layout)
 import Route exposing (Route)
 import Shared
@@ -143,11 +142,13 @@ filesAreType filetype files =
 viewSong : ReadDirection -> String -> Song -> Html msg
 viewSong readDirection sharedModel song =
     let
+        divImages : List (Html msg) -> Html msg
         divImages content =
             div
                 [ css [ whitespace_nowrap, h_full ] ]
                 content
 
+        divCenter : List (Html msg) -> Html msg
         divCenter content =
             div
                 [ css [ text_center, font_sans, pt_8 ] ]

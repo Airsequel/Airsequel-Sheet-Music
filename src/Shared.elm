@@ -10,6 +10,7 @@ module Shared exposing
 @docs Flags, decoder
 @docs Model, Msg
 @docs init, update, subscriptions
+@docs getSongWithFiles
 
 -}
 

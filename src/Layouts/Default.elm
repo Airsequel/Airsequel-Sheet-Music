@@ -6,14 +6,12 @@ module Layouts.Default exposing
     )
 
 import Css.Global
-import Effect exposing (Effect(..))
-import Html.Styled exposing (..)
+import Effect exposing (Effect)
+import Html.Styled exposing (a, div, h1, main_, nav, text, toUnstyled)
 import Html.Styled.Attributes exposing (..)
-import Http exposing (Error(..))
 import Layout exposing (Layout)
 import Route exposing (Route)
 import Shared
-import Shared.Msg exposing (Msg(..))
 import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)

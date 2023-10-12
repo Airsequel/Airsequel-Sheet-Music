@@ -1,15 +1,11 @@
 module Pages.Songs.Horizontal.SongId_ exposing (Model, Msg, page)
 
-import Effect exposing (Effect(..))
+import Effect exposing (Effect)
 import GraphQL
-import Html.Styled exposing (..)
-import Html.Styled.Attributes exposing (..)
-import Http exposing (Error(..))
 import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
-import Tailwind.Utilities exposing (..)
 import Types.ReadDirection exposing (ReadDirection(..))
 import Types.Song exposing (Song)
 import View exposing (View)

@@ -1,14 +1,11 @@
-module Utils exposing (..)
+module Utils exposing (addStarIf, arrowIconVert, host, viewHttpError)
 
 import Css
-import Effect exposing (Effect(..))
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
-import Shared.Msg exposing (Msg(..))
 import Svg.Styled as Svg
 import Svg.Styled.Attributes exposing (d, viewBox)
-import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
 

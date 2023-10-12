@@ -7,11 +7,10 @@ import GraphQL
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (onInput, onSubmit)
-import Http exposing (Error(..))
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
-import Shared.Msg exposing (Msg(..))
+import Shared.Msg exposing (Msg)
 import Svg.Styled as Svg
 import Svg.Styled.Attributes exposing (d, viewBox)
 import Tailwind.Breakpoints exposing (..)
@@ -613,10 +612,6 @@ view sharedModel model =
                             ]
                      )
                         :: (let
-                                readonlyIdEmpty =
-                                    (sharedModel.readonlyId == Nothing)
-                                        || (sharedModel.readonlyId == Just "")
-
                                 ifNothing valMb valDefault =
                                     case valMb of
                                         Nothing ->
@@ -651,6 +646,15 @@ view sharedModel model =
                                             ]
 
                                         Nothing ->
+                                            let
+                                                readonlyIdEmpty =
+                                                    (sharedModel.readonlyId
+                                                        == Nothing
+                                                    )
+                                                        || (sharedModel.readonlyId
+                                                                == Just ""
+                                                           )
+                                            in
                                             if readonlyIdEmpty then
                                                 viewGettingStarted
                                                     sharedModel

@@ -12,6 +12,11 @@ start: node_modules elm.json elm-land.json
 	npx elm-land server
 
 
+.PHONY: test
+test:
+	npx elm-review
+
+
 dist: node_modules elm.json elm-land.json $(shell find src) $(shell find static)
 	npx elm-land build
 	touch dist  # Update timestamp

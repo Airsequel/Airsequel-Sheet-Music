@@ -1,8 +1,6 @@
-module Types.Song exposing (..)
+module Types.Song exposing (Song, songDecoder, songsDecoder)
 
 import Html exposing (..)
-import Html.Attributes exposing (..)
-import Http exposing (Error(..))
 import Json.Decode as JD exposing (Decoder)
 import Json.Decode.Pipeline as JDP
 import Types.File exposing (File, fileDecoder)

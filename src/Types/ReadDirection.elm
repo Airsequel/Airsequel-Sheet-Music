@@ -1,4 +1,4 @@
-module Types.ReadDirection exposing (..)
+module Types.ReadDirection exposing (ReadDirection(..))
 
 
 type ReadDirection

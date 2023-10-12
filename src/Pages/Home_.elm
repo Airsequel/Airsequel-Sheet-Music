@@ -477,22 +477,33 @@ viewToolbar songsResult =
             [ case gqlRes.data of
                 Just songsData ->
                     div
-                        [ css [ flex, flex_row, justify_between, mt_4 ] ]
-                        [ input
-                            [ type_ "text"
-                            , css
-                                [ border
-                                , border_solid
-                                , border_color gray_400
-                                , rounded
-                                , px_4
-                                , py_2
-                                , w_80
-                                ]
-                            , placeholder "Search"
-                            , onInput EnteredSearch
+                        [ css
+                            [ flex
+                            , flex_col
+                            , sm [ flex_row ]
+                            , justify_between
+                            , mt_4
+                            , gap_4
                             ]
-                            []
+                        ]
+                        [ div []
+                            [ input
+                                [ type_ "text"
+                                , css
+                                    [ border
+                                    , border_solid
+                                    , border_color gray_400
+                                    , rounded
+                                    , px_4
+                                    , py_2
+                                    , w_full
+                                    , sm [ w_80 ]
+                                    ]
+                                , placeholder "Search"
+                                , onInput EnteredSearch
+                                ]
+                                []
+                            ]
                         , span
                             [ css [ font_semibold ] ]
                             [ text "Number of songs: "
@@ -550,9 +561,8 @@ view sharedModel model =
                 [ Css.Global.global globalStyles
                 , nav
                     [ css
-                        [ px_10
-                        , pt_12
-                        , pb_4
+                        [ p_4
+                        , sm [ px_10, pt_12, pb_4 ]
                         ]
                     ]
                     (div

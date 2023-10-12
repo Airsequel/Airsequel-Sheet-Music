@@ -3,6 +3,7 @@ module Pages.Home_ exposing (Model, Msg, page)
 import Css
 import Css.Global
 import Effect exposing (Effect(..))
+import GraphQL
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (onInput, onSubmit)
@@ -17,7 +18,7 @@ import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
 import Types.Song exposing (Song)
-import Utils exposing (arrowIconVert, host, viewHttpError)
+import Utils exposing (addStarIf, arrowIconVert, host, viewHttpError)
 import View exposing (View)
 
 
@@ -43,6 +44,7 @@ page sharedModel _ =
 type alias Model =
     { sharedModel : Shared.Model
     , partialReadonlyId : Maybe String
+    , searchStrMb : Maybe String
     , errors : List String
     }
 
@@ -51,6 +53,7 @@ init : Shared.Model -> () -> ( Model, Effect Msg )
 init sharedModel () =
     ( { sharedModel = sharedModel
       , partialReadonlyId = Nothing
+      , searchStrMb = Nothing
       , errors = []
       }
     , Effect.none
@@ -63,6 +66,7 @@ init sharedModel () =
 
 type Msg
     = EnteredReadonlyId String
+    | EnteredSearch String
     | SubmittedReadonlyId
 
 
@@ -71,6 +75,11 @@ update msg model =
     case msg of
         EnteredReadonlyId readonlyId ->
             ( { model | partialReadonlyId = Just readonlyId }
+            , Effect.none
+            )
+
+        EnteredSearch searchStr ->
+            ( { model | searchStrMb = Just searchStr }
             , Effect.none
             )
 
@@ -290,21 +299,16 @@ viewSong song =
     tr
         []
         [ tdSty []
-            [ text <|
-                (if song.isFavorite then
-                    "⭐️ "
-
-                 else
-                    ""
-                )
-                    ++ Maybe.withDefault "" song.interpreter
+            [ text <| Maybe.withDefault "" song.interpreter
             ]
         , tdSty []
-            [ a
+            [ text <| addStarIf song.isFavorite
+            , a
                 [ href <| "/songs/" ++ String.fromInt song.rowid
                 , css [ underline, text_color blue_800 ]
                 ]
-                [ text song.name ]
+                [ text song.name
+                ]
             ]
         , tdSty [ px_1 ]
             [ if song.numberOfFiles == 0 then
@@ -352,8 +356,8 @@ viewSong song =
         ]
 
 
-viewSongsTable : List Song -> Html Msg
-viewSongsTable songs =
+viewSongsTable : Maybe String -> List Song -> Html Msg
+viewSongsTable searchStrMb songs =
     let
         documentIcon styles =
             Svg.svg
@@ -397,21 +401,122 @@ viewSongsTable songs =
                     , thSty [] [ text "Key" ]
                     ]
                 ]
+
+        filterBySearchStr song =
+            case searchStrMb of
+                Just searchStr ->
+                    ((song.interpreter |> Maybe.withDefault "")
+                        ++ " "
+                        ++ song.name
+                        ++ " "
+                        ++ (song.instrumentation |> Maybe.withDefault "")
+                        ++ " "
+                        ++ (song.key |> Maybe.withDefault "")
+                    )
+                        |> String.toLower
+                        |> String.contains (String.toLower searchStr)
+
+                Nothing ->
+                    True
+
+        favoriteSongs =
+            songs
+                |> List.filter filterBySearchStr
+                |> List.filter .isFavorite
+                |> List.map viewSong
     in
     Html.Styled.table
         [ css [ w_full, bg_color white ] ]
         [ tableHead
         , tbody [] <|
-            ((songs
-                |> List.filter (\song -> song.isFavorite)
-                |> List.map viewSong
-             )
+            (favoriteSongs
+                ++ (if List.isEmpty favoriteSongs then
+                        []
+
+                    else
+                        [ tr [ css [ h_8, border_b, border_color gray_400 ] ] []
+                        , tr [ css [ h_8, border_t, border_color gray_400 ] ] []
+                        ]
+                   )
                 ++ (songs
-                        |> List.filter (\song -> not song.isFavorite)
+                        |> List.filter filterBySearchStr
+                        |> List.filter (not << .isFavorite)
                         |> List.map viewSong
                    )
             )
         ]
+
+
+formatGqlErrors : List GraphQL.Error -> Html msg
+formatGqlErrors gqlErrors =
+    div [ css [ text_color red_800 ] ]
+        [ p
+            [ css [ font_bold ] ]
+            [ text <|
+                "Errors: "
+                    ++ (gqlErrors
+                            |> List.map
+                                (\err -> err.message)
+                            |> String.join ", "
+                       )
+            ]
+        , br [] []
+        , p []
+            [ text """
+                Please check that the read-only ID is really from a
+                copy of the sheet music template database and has
+                the correct / up-to-date schema.
+                """
+            ]
+        ]
+
+
+viewToolbar : GraphQL.Response (List Song) -> List (Html Msg)
+viewToolbar songsResult =
+    case songsResult of
+        Ok gqlRes ->
+            [ case gqlRes.data of
+                Just songsData ->
+                    div
+                        [ css [ flex, flex_row, justify_between, mt_4 ] ]
+                        [ input
+                            [ type_ "text"
+                            , css
+                                [ border
+                                , border_solid
+                                , border_color gray_400
+                                , rounded
+                                , px_4
+                                , py_2
+                                , w_80
+                                ]
+                            , placeholder "Search"
+                            , onInput EnteredSearch
+                            ]
+                            []
+                        , span
+                            [ css [ font_semibold ] ]
+                            [ text "Number of songs: "
+                            , text
+                                (songsData.root
+                                    |> List.length
+                                    |> String.fromInt
+                                )
+                            ]
+                        ]
+
+                Nothing ->
+                    text ""
+            , case gqlRes.errors of
+                Just gqlErrors ->
+                    formatGqlErrors gqlErrors
+
+                Nothing ->
+                    text ""
+            ]
+
+        Err error ->
+            [ viewHttpError error ]
 
 
 view : Shared.Model -> Model -> View Msg
@@ -429,28 +534,6 @@ view sharedModel model =
 
             else
                 text ""
-
-        formatGqlErrors gqlErrors =
-            div [ css [ text_color red_800 ] ]
-                [ p
-                    [ css [ font_bold ] ]
-                    [ text <|
-                        "Errors: "
-                            ++ (gqlErrors
-                                    |> List.map
-                                        (\err -> err.message)
-                                    |> String.join ", "
-                               )
-                    ]
-                , br [] []
-                , p []
-                    [ text """
-                        Please check that the read-only ID is really from a
-                        copy of the sheet music template database and has
-                        the correct / up-to-date schema.
-                        """
-                    ]
-                ]
     in
     { title = "Airsequel Sheet Music"
     , body =
@@ -504,33 +587,7 @@ view sharedModel model =
                                     model
                                 ]
                         ]
-                        :: (case sharedModel.songsResult of
-                                Ok gqlRes ->
-                                    [ case gqlRes.data of
-                                        Just songsData ->
-                                            p [ css [ font_semibold ] ]
-                                                [ text <|
-                                                    "Number of songs: "
-                                                , text
-                                                    (songsData.root
-                                                        |> List.length
-                                                        |> String.fromInt
-                                                    )
-                                                ]
-
-                                        Nothing ->
-                                            text ""
-                                    , case gqlRes.errors of
-                                        Just gqlErrors ->
-                                            formatGqlErrors gqlErrors
-
-                                        Nothing ->
-                                            text ""
-                                    ]
-
-                                Err error ->
-                                    [ viewHttpError error ]
-                           )
+                        :: viewToolbar sharedModel.songsResult
                     )
                 , div
                     [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
@@ -589,7 +646,9 @@ view sharedModel model =
                                 Ok gqlRes ->
                                     case gqlRes.data of
                                         Just songsData ->
-                                            [ viewSongsTable songsData.root ]
+                                            [ viewSongsTable model.searchStrMb
+                                                songsData.root
+                                            ]
 
                                         Nothing ->
                                             if readonlyIdEmpty then

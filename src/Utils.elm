@@ -54,3 +54,12 @@ arrowIconVert styles =
             ]
             []
         ]
+
+
+addStarIf : Bool -> String
+addStarIf condition =
+    if condition then
+        "⭐️ "
+
+    else
+        ""

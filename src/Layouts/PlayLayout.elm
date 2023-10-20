@@ -1,5 +1,6 @@
 module Layouts.PlayLayout exposing
     ( Alignment(..)
+    , ColorScheme(..)
     , Model
     , Msg
     , Props
@@ -52,13 +53,32 @@ type Alignment
     | AlignBottom
 
 
+type ColorScheme
+    = Light
+    | Dark
+    | Sepia
+
+
+{-| Solarized colors <https://ethanschoonover.com/solarized/>
+-}
+sepiaColors : { fg : Css.Color, bg : Css.Color }
+sepiaColors =
+    { fg = Css.rgb 7 54 66
+    , bg = Css.rgb 253 246 227
+    }
+
+
 type alias Model =
-    { alignment : Alignment }
+    { alignment : Alignment
+    , colorScheme : ColorScheme
+    }
 
 
 init : () -> ( Model, Effect Msg )
 init _ =
-    ( { alignment = AlignTop }
+    ( { alignment = AlignTop
+      , colorScheme = Light
+      }
     , Effect.none
     )
 
@@ -69,6 +89,7 @@ init _ =
 
 type Msg
     = SetAlignment Alignment
+    | SetColorScheme ColorScheme
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -76,6 +97,11 @@ update msg model =
     case msg of
         SetAlignment alignment ->
             ( { model | alignment = alignment }
+            , Effect.none
+            )
+
+        SetColorScheme colorScheme ->
+            ( { model | colorScheme = colorScheme }
             , Effect.none
             )
 
@@ -89,8 +115,8 @@ subscriptions _ =
 -- VIEW
 
 
-viewImage : ReadDirection -> Alignment -> String -> File -> Html msg
-viewImage readDirection alignment readonlyId file =
+viewImage : ReadDirection -> Model -> String -> File -> Html msg
+viewImage readDirection model readOnlyId file =
     div
         [ css <|
             case readDirection of
@@ -104,7 +130,7 @@ viewImage readDirection alignment readonlyId file =
             [ src
                 (host
                     ++ "/readonly/"
-                    ++ readonlyId
+                    ++ readOnlyId
                     ++ "/tables/files/columns/content/files/rowid/"
                     ++ String.fromInt file.rowid
                 )
@@ -113,6 +139,18 @@ viewImage readDirection alignment readonlyId file =
                  , border_solid
                  , border_color orange_500
                  , p_2
+                 , case model.colorScheme of
+                    Light ->
+                        Css.property "" ""
+
+                    Dark ->
+                        Css.batch
+                            [ Css.property "filter" "invert(1)"
+                            , Css.opacity (Css.num 0.85)
+                            ]
+
+                    Sepia ->
+                        Css.property "mix-blend-mode" "multiply"
                  ]
                     ++ (case readDirection of
                             ReadHorizontal ->
@@ -122,7 +160,7 @@ viewImage readDirection alignment readonlyId file =
                                 , align_top
                                 , border_r_2
                                 , object_contain
-                                , case alignment of
+                                , case model.alignment of
                                     AlignTop ->
                                         object_top
 
@@ -155,9 +193,15 @@ filesAreType filetype files =
             )
 
 
-getSidebar : Alignment -> Html Msg
-getSidebar alignment =
+getSidebar : Model -> Html Msg
+getSidebar model =
     let
+        alignment =
+            model.alignment
+
+        colorScheme =
+            model.colorScheme
+
         btnCss =
             Css.batch
                 [ cursor_pointer
@@ -165,9 +209,10 @@ getSidebar alignment =
                 , bg_color gray_100
                 , Css.hover [ bg_color gray_50 ]
                 , Css.active [ bg_color gray_200 ]
+                , text_center
                 ]
 
-        markSelectedFor : Alignment -> Alignment -> Css.Style
+        markSelectedFor : a -> a -> Css.Style
         markSelectedFor reference actual =
             if reference == actual then
                 Css.batch
@@ -183,6 +228,85 @@ getSidebar alignment =
                     , border_solid
                     , border_color transparent
                     ]
+
+        alignmentButtons =
+            [ button
+                [ css [ btnCss, markSelectedFor AlignTop alignment ]
+                , title "Align pages at the top"
+                , onClick (SetAlignment AlignTop)
+                ]
+                [ text "⬆️" ]
+            , button
+                [ css [ btnCss, markSelectedFor AlignCenter alignment ]
+                , title "Center pages"
+                , onClick (SetAlignment AlignCenter)
+                ]
+                [ text "⏺" ]
+            , button
+                [ css [ btnCss, markSelectedFor AlignBottom alignment ]
+                , title "Align pages at the bottom"
+                , onClick (SetAlignment AlignBottom)
+                ]
+                [ text "⬇️" ]
+            ]
+
+        iconStyle =
+            Css.batch
+                [ inline_block
+                , w_5
+                , h_5
+                , rounded_full
+                , border
+                , border_solid
+                , border_color gray_400
+                , bg_color gray_100
+                , text_center
+                ]
+
+        iconContent =
+            [ span
+                [ css [ relative, top_0_dot_5 ] ]
+                [ text "♫" ]
+            ]
+
+        colorSchemeButtons =
+            [ button
+                [ css [ btnCss, markSelectedFor Light colorScheme ]
+                , title "Light color scheme"
+                , onClick (SetColorScheme Light)
+                ]
+                [ span
+                    [ css [ iconStyle, bg_color white, text_color black ] ]
+                    iconContent
+                ]
+            , button
+                [ css [ btnCss, markSelectedFor Dark colorScheme ]
+                , title "Dark color scheme"
+                , onClick (SetColorScheme Dark)
+                ]
+                [ span
+                    [ css [ iconStyle, bg_color black, text_color white ]
+                    ]
+                    iconContent
+                ]
+            , button
+                [ css [ btnCss, markSelectedFor Sepia colorScheme ]
+                , title "Sepia color scheme"
+                , onClick (SetColorScheme Sepia)
+                ]
+                [ span
+                    [ css
+                        [ iconStyle
+                        , Css.backgroundColor sepiaColors.bg
+                        , Css.color sepiaColors.fg
+                        ]
+                    ]
+                    iconContent
+                ]
+            ]
+
+        placeholder =
+            [ div [ css [ h_3 ] ] [] ]
     in
     div
         [ css
@@ -196,29 +320,14 @@ getSidebar alignment =
             , gap_y_0_dot_5
             ]
         ]
-        [ button
-            [ css [ btnCss, markSelectedFor AlignTop alignment ]
-            , title "Align pages at the top"
-            , onClick (SetAlignment AlignTop)
-            ]
-            [ text "⬆️" ]
-        , button
-            [ css [ btnCss, markSelectedFor AlignCenter alignment ]
-            , title "Center pages"
-            , onClick (SetAlignment AlignCenter)
-            ]
-            [ text "⏺" ]
-        , button
-            [ css [ btnCss, markSelectedFor AlignBottom alignment ]
-            , title "Align pages at the bottom"
-            , onClick (SetAlignment AlignBottom)
-            ]
-            [ text "⬇️" ]
-        ]
+        (alignmentButtons
+            ++ placeholder
+            ++ colorSchemeButtons
+        )
 
 
-viewSong : ReadDirection -> Alignment -> String -> Song -> Html Msg
-viewSong readDirection alignment sharedModel song =
+viewSong : ReadDirection -> Model -> String -> Song -> Html Msg
+viewSong readDirection model readOnlyId song =
     let
         divImages : List (Html Msg) -> Html Msg
         divImages content =
@@ -243,7 +352,7 @@ viewSong readDirection alignment sharedModel song =
                         [ src
                             (host
                                 ++ "/readonly/"
-                                ++ sharedModel
+                                ++ readOnlyId
                                 ++ "/tables/files/columns/content/files/rowid/"
                                 ++ String.fromInt file.rowid
                             )
@@ -261,7 +370,7 @@ viewSong readDirection alignment sharedModel song =
     else
         divImages <|
             (if readDirection == ReadHorizontal then
-                [ getSidebar alignment ]
+                [ getSidebar model ]
 
              else
                 []
@@ -270,17 +379,30 @@ viewSong readDirection alignment sharedModel song =
                         |> List.map
                             (viewImage
                                 readDirection
-                                alignment
-                                sharedModel
+                                model
+                                readOnlyId
                             )
                    )
 
 
 viewPages : Props -> Shared.Model -> Model -> Song -> Html Msg
 viewPages settings sharedModel model song =
+    let
+        readOnlyId =
+            sharedModel.readonlyId
+                |> Maybe.withDefault ""
+    in
     div
         [ css
-            [ bg_color white
+            [ case model.colorScheme of
+                Light ->
+                    bg_color white
+
+                Dark ->
+                    bg_color black
+
+                Sepia ->
+                    Css.backgroundColor sepiaColors.bg
 
             -- Make bg color cover the whole page:
             , overflow_scroll
@@ -296,15 +418,7 @@ viewPages settings sharedModel model song =
                 w_full
             ]
         ]
-        [ viewSong
-            settings.readDirection
-            model.alignment
-            (Maybe.withDefault
-                ""
-                sharedModel.readonlyId
-            )
-            song
-        ]
+        [ viewSong settings.readDirection model readOnlyId song ]
 
 
 view :

@@ -1,15 +1,18 @@
 module Layouts.PlayLayout exposing
-    ( Model
+    ( Alignment(..)
+    , Model
     , Msg
     , Props
     , layout
     )
 
+import Css
 import Effect exposing (Effect)
 import GraphQL
 import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
+import Html.Styled.Events exposing (onClick)
 import Layout exposing (Layout)
 import Route exposing (Route)
 import Shared
@@ -43,13 +46,19 @@ layout settings sharedModel _ =
 -- MODEL
 
 
+type Alignment
+    = AlignTop
+    | AlignCenter
+    | AlignBottom
+
+
 type alias Model =
-    {}
+    { alignment : Alignment }
 
 
 init : () -> ( Model, Effect Msg )
 init _ =
-    ( {}
+    ( { alignment = AlignTop }
     , Effect.none
     )
 
@@ -59,14 +68,14 @@ init _ =
 
 
 type Msg
-    = ReplaceMe
+    = SetAlignment Alignment
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        ReplaceMe ->
-            ( model
+        SetAlignment alignment ->
+            ( { model | alignment = alignment }
             , Effect.none
             )
 
@@ -80,8 +89,8 @@ subscriptions _ =
 -- VIEW
 
 
-viewImage : ReadDirection -> String -> File -> Html msg
-viewImage readDirection readonlyId file =
+viewImage : ReadDirection -> Alignment -> String -> File -> Html msg
+viewImage readDirection alignment readonlyId file =
     div
         [ css <|
             case readDirection of
@@ -109,12 +118,19 @@ viewImage readDirection readonlyId file =
                             ReadHorizontal ->
                                 [ w_full
                                 , h_full
+                                , max_w_4xl
                                 , align_top
                                 , border_r_2
                                 , object_contain
+                                , case alignment of
+                                    AlignTop ->
+                                        object_top
 
-                                -- TODO: Make editable via UI
-                                , object_center
+                                    AlignCenter ->
+                                        object_center
+
+                                    AlignBottom ->
+                                        object_bottom
                                 ]
 
                             ReadVertical ->
@@ -139,10 +155,72 @@ filesAreType filetype files =
             )
 
 
-viewSong : ReadDirection -> String -> Song -> Html msg
-viewSong readDirection sharedModel song =
+getSidebar : Alignment -> Html Msg
+getSidebar alignment =
     let
-        divImages : List (Html msg) -> Html msg
+        btnCss =
+            Css.batch
+                [ cursor_pointer
+                , py_1
+                , bg_color gray_100
+                , Css.hover [ bg_color gray_50 ]
+                , Css.active [ bg_color gray_200 ]
+                ]
+
+        markSelectedFor : Alignment -> Alignment -> Css.Style
+        markSelectedFor reference actual =
+            if reference == actual then
+                Css.batch
+                    [ border_l_4
+                    , border_l_color orange_500
+                    , border_solid
+                    , bg_color gray_300
+                    ]
+
+            else
+                Css.batch
+                    [ border_l_4
+                    , border_solid
+                    , border_color transparent
+                    ]
+    in
+    div
+        [ css
+            [ w_12
+            , h_full
+            , bg_color gray_200
+            , inline_block
+            , inline_flex
+            , flex_col
+            , align_top
+            , gap_y_0_dot_5
+            ]
+        ]
+        [ button
+            [ css [ btnCss, markSelectedFor AlignTop alignment ]
+            , title "Align pages at the top"
+            , onClick (SetAlignment AlignTop)
+            ]
+            [ text "⬆️" ]
+        , button
+            [ css [ btnCss, markSelectedFor AlignCenter alignment ]
+            , title "Center pages"
+            , onClick (SetAlignment AlignCenter)
+            ]
+            [ text "⏺" ]
+        , button
+            [ css [ btnCss, markSelectedFor AlignBottom alignment ]
+            , title "Align pages at the bottom"
+            , onClick (SetAlignment AlignBottom)
+            ]
+            [ text "⬇️" ]
+        ]
+
+
+viewSong : ReadDirection -> Alignment -> String -> Song -> Html Msg
+viewSong readDirection alignment sharedModel song =
+    let
+        divImages : List (Html Msg) -> Html Msg
         divImages content =
             div
                 [ css [ whitespace_nowrap, h_full ] ]
@@ -160,7 +238,7 @@ viewSong readDirection sharedModel song =
     else if song.files |> filesAreType "pdf" then
         case song.files of
             [ file ] ->
-                divImages
+                divImages <|
                     [ iframe
                         [ src
                             (host
@@ -181,14 +259,25 @@ viewSong readDirection sharedModel song =
                 divCenter [ text "No files" ]
 
     else
-        divImages
-            (song.files
-                |> List.map (viewImage readDirection sharedModel)
+        divImages <|
+            (if readDirection == ReadHorizontal then
+                [ getSidebar alignment ]
+
+             else
+                []
             )
+                ++ (song.files
+                        |> List.map
+                            (viewImage
+                                readDirection
+                                alignment
+                                sharedModel
+                            )
+                   )
 
 
-viewPages : Props -> Shared.Model -> Song -> Html msg
-viewPages settings sharedModel song =
+viewPages : Props -> Shared.Model -> Model -> Song -> Html Msg
+viewPages settings sharedModel model song =
     div
         [ css
             [ bg_color white
@@ -209,6 +298,7 @@ viewPages settings sharedModel song =
         ]
         [ viewSong
             settings.readDirection
+            model.alignment
             (Maybe.withDefault
                 ""
                 sharedModel.readonlyId
@@ -226,7 +316,7 @@ view :
         , model : Model
         }
     -> View mainMsg
-view settings sharedModel _ =
+view settings sharedModel { toContentMsg, model } =
     case settings.songsResult of
         Ok gqlRes ->
             case gqlRes.data of
@@ -236,7 +326,9 @@ view settings sharedModel _ =
                             { title = song.name ++ " | Play View"
                             , body =
                                 [ toUnstyled <|
-                                    viewPages settings sharedModel song
+                                    (viewPages settings sharedModel model song
+                                        |> Html.Styled.map toContentMsg
+                                    )
                                 ]
                             }
 

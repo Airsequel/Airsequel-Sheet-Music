@@ -15,6 +15,7 @@ import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (onClick)
 import Layout exposing (Layout)
+import Maybe exposing (withDefault)
 import Route exposing (Route)
 import Shared
 import Tailwind.Theme exposing (..)
@@ -47,6 +48,11 @@ layout settings sharedModel _ =
 -- MODEL
 
 
+type Formatting
+    = DefaultFormatting
+    | ShowHeading
+
+
 type Alignment
     = AlignTop
     | AlignCenter
@@ -69,15 +75,17 @@ sepiaColors =
 
 
 type alias Model =
-    { alignment : Alignment
-    , colorScheme : ColorScheme
+    { -- alignment : Alignment, -- TODO: Is there still a need for this?
+      colorScheme : ColorScheme
+    , formatting : Formatting
     }
 
 
 init : () -> ( Model, Effect Msg )
 init _ =
-    ( { alignment = AlignTop
-      , colorScheme = Light
+    ( { -- alignment = AlignTop,
+        colorScheme = Light
+      , formatting = ShowHeading
       }
     , Effect.none
     )
@@ -88,20 +96,25 @@ init _ =
 
 
 type Msg
-    = SetAlignment Alignment
-    | SetColorScheme ColorScheme
+    = -- SetAlignment Alignment |
+      SetColorScheme ColorScheme
+    | SetFormatting Formatting
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
     case msg of
-        SetAlignment alignment ->
-            ( { model | alignment = alignment }
+        -- SetAlignment alignment ->
+        --     ( { model | alignment = alignment }
+        --     , Effect.none
+        --     )
+        SetColorScheme colorScheme ->
+            ( { model | colorScheme = colorScheme }
             , Effect.none
             )
 
-        SetColorScheme colorScheme ->
-            ( { model | colorScheme = colorScheme }
+        SetFormatting formatting ->
+            ( { model | formatting = formatting }
             , Effect.none
             )
 
@@ -115,71 +128,123 @@ subscriptions _ =
 -- VIEW
 
 
-viewImage : ReadDirection -> Model -> String -> File -> Html msg
-viewImage readDirection model readOnlyId file =
+viewImage : Song -> ReadDirection -> Model -> String -> Int -> File -> Html msg
+viewImage song readDirection model readOnlyId index file =
+    let
+        headerHeight =
+            Css.rem 5
+
+        numOfPages =
+            List.length song.files
+    in
     div
-        [ css <|
-            case readDirection of
+        [ id "viewImage"
+        , css
+            [ flex
+            , flex_col
+            , border_solid
+            , border_color orange_500
+            , p_2
+            , case model.colorScheme of
+                Light ->
+                    Css.property "" ""
+
+                Dark ->
+                    Css.batch
+                        [ Css.property "filter" "invert(1)"
+                        , Css.opacity (Css.num 0.85)
+                        ]
+
+                Sepia ->
+                    Css.property "mix-blend-mode" "multiply"
+            , case readDirection of
                 ReadHorizontal ->
-                    [ inline_block, h_full ]
+                    if numOfPages > 1 then
+                        border_r_2
+
+                    else
+                        Css.batch []
 
                 ReadVertical ->
-                    []
+                    border_b_2
+            ]
         ]
-        [ img
-            [ src
-                (host
-                    ++ "/readonly/"
-                    ++ readOnlyId
-                    ++ "/tables/files/columns/content/files/rowid/"
-                    ++ String.fromInt file.rowid
-                )
-            , css
-                ([ block
-                 , border_solid
-                 , border_color orange_500
-                 , p_2
-                 , case model.colorScheme of
-                    Light ->
-                        Css.property "" ""
+        [ if index == 0 && model.formatting == ShowHeading then
+            div
+                [ css
+                    [ Css.height headerHeight
+                    , text_center
+                    ]
+                ]
+                [ h2
+                    [ css
+                        [ font_sans
+                        , font_medium
+                        , mb_2
+                        ]
+                    ]
+                    [ text song.name ]
+                , p [] [ song.interpreter |> withDefault "" |> text ]
+                ]
 
-                    Dark ->
-                        Css.batch
-                            [ Css.property "filter" "invert(1)"
-                            , Css.opacity (Css.num 0.85)
+          else
+            text ""
+        , div
+            [ css <|
+                [ flex
+                , flex_col
+
+                -- , case model.alignment of
+                --     AlignTop ->
+                --         justify_start
+                --     AlignCenter ->
+                --         justify_center
+                --     AlignBottom ->
+                --         justify_end
+                ]
+                    ++ (if index == 0 then
+                            [ Css.height <|
+                                Css.calc (Css.pct 100) Css.minus headerHeight
+                            , overflow_hidden
                             ]
 
-                    Sepia ->
-                        Css.property "mix-blend-mode" "multiply"
-                 ]
-                    ++ (case readDirection of
-                            ReadHorizontal ->
-                                [ w_full
-                                , h_full
-                                , max_w_4xl
-                                , align_top
-                                , border_r_2
-                                , object_contain
-                                , case model.alignment of
-                                    AlignTop ->
-                                        object_top
-
-                                    AlignCenter ->
-                                        object_center
-
-                                    AlignBottom ->
-                                        object_bottom
-                                ]
-
-                            ReadVertical ->
-                                [ w_full
-                                , h_full
-                                , border_b_2
-                                ]
+                        else
+                            [ h_full ]
                        )
-                )
             ]
-            []
+            [ img
+                [ src
+                    (host
+                        ++ "/readonly/"
+                        ++ readOnlyId
+                        ++ "/tables/files/columns/content/files/rowid/"
+                        ++ String.fromInt file.rowid
+                    )
+                , css <|
+                    case readDirection of
+                        ReadHorizontal ->
+                            [ block
+
+                            -- Prevent wide images from expanding too much
+                            , max_w_6xl
+
+                            -- Prevent image from losing aspect ratio
+                            , object_contain
+                            , if numOfPages > 1 then
+                                h_full
+
+                              else
+                                Css.batch
+                                    [ max_w_full
+                                    , max_h_full
+                                    ]
+                            ]
+
+                        ReadVertical ->
+                            [ block, w_full, max_w_6xl, self_center ]
+                ]
+                []
+            ]
         ]
 
 
@@ -196,9 +261,6 @@ filesAreType filetype files =
 getSidebar : Model -> Html Msg
 getSidebar model =
     let
-        alignment =
-            model.alignment
-
         colorScheme =
             model.colorScheme
 
@@ -229,27 +291,40 @@ getSidebar model =
                     , border_color transparent
                     ]
 
-        alignmentButtons =
+        formattingButtons =
             [ button
-                [ css [ btnCss, markSelectedFor AlignTop alignment ]
-                , title "Align pages at the top"
-                , onClick (SetAlignment AlignTop)
+                [ css [ btnCss, markSelectedFor ShowHeading model.formatting ]
+                , onClick
+                    (if model.formatting == DefaultFormatting then
+                        SetFormatting ShowHeading
+
+                     else
+                        SetFormatting DefaultFormatting
+                    )
                 ]
-                [ text "⬆️" ]
-            , button
-                [ css [ btnCss, markSelectedFor AlignCenter alignment ]
-                , title "Center pages"
-                , onClick (SetAlignment AlignCenter)
-                ]
-                [ text "⏺" ]
-            , button
-                [ css [ btnCss, markSelectedFor AlignBottom alignment ]
-                , title "Align pages at the bottom"
-                , onClick (SetAlignment AlignBottom)
-                ]
-                [ text "⬇️" ]
+                [ text "H" ]
             ]
 
+        -- alignmentButtons =
+        --     [ button
+        --         [ css [ btnCss, markSelectedFor AlignTop model.alignment ]
+        --         , title "Align pages at the top"
+        --         , onClick (SetAlignment AlignTop)
+        --         ]
+        --         [ text "⬆️" ]
+        --     , button
+        --         [ css [ btnCss, markSelectedFor AlignCenter model.alignment ]
+        --         , title "Center pages"
+        --         , onClick (SetAlignment AlignCenter)
+        --         ]
+        --         [ text "⏺" ]
+        --     , button
+        --         [ css [ btnCss, markSelectedFor AlignBottom model.alignment ]
+        --         , title "Align pages at the bottom"
+        --         , onClick (SetAlignment AlignBottom)
+        --         ]
+        --         [ text "⬇️" ]
+        --     ]
         iconStyle =
             Css.batch
                 [ inline_block
@@ -310,18 +385,20 @@ getSidebar model =
     in
     div
         [ css
-            [ w_12
-            , h_full
-            , bg_color gray_200
-            , inline_block
-            , inline_flex
+            [ flex
             , flex_col
+            , flex_shrink_0
+            , w_12
+            , h_full
             , align_top
             , gap_y_0_dot_5
+            , bg_color gray_200
             ]
         ]
-        (alignmentButtons
+        (formattingButtons
             ++ placeholder
+            -- ++ alignmentButtons
+            -- ++ placeholder
             ++ colorSchemeButtons
         )
 
@@ -332,7 +409,29 @@ viewSong readDirection model readOnlyId song =
         divImages : List (Html Msg) -> Html Msg
         divImages content =
             div
-                [ css [ whitespace_nowrap, h_full ] ]
+                [ id "divImages"
+                , css
+                    [ whitespace_nowrap
+                    , flex
+                    , case readDirection of
+                        ReadHorizontal ->
+                            Css.batch
+                                [ flex_row
+
+                                -- , case model.alignment of
+                                --     AlignTop ->
+                                --         self_start
+                                --     AlignCenter ->
+                                --         self_center
+                                --     AlignBottom ->
+                                --         self_end
+                                ]
+
+                        ReadVertical ->
+                            flex_col
+                    , h_full
+                    ]
+                ]
                 content
 
         divCenter : List (Html msg) -> Html msg
@@ -376,8 +475,9 @@ viewSong readDirection model readOnlyId song =
                 []
             )
                 ++ (song.files
-                        |> List.map
+                        |> List.indexedMap
                             (viewImage
+                                song
                                 readDirection
                                 model
                                 readOnlyId
@@ -394,7 +494,17 @@ viewPages settings sharedModel model song =
     in
     div
         [ css
-            [ case model.colorScheme of
+            [ case settings.readDirection of
+                ReadHorizontal ->
+                    h_full
+
+                ReadVertical ->
+                    if filesAreType "pdf" song.files then
+                        h_full
+
+                    else
+                        w_full
+            , case model.colorScheme of
                 Light ->
                     bg_color white
 
@@ -406,16 +516,6 @@ viewPages settings sharedModel model song =
 
             -- Make bg color cover the whole page:
             , overflow_scroll
-            , if
-                (settings.readDirection
-                    == ReadHorizontal
-                )
-                    || filesAreType "pdf" song.files
-              then
-                h_full
-
-              else
-                w_full
             ]
         ]
         [ viewSong settings.readDirection model readOnlyId song ]

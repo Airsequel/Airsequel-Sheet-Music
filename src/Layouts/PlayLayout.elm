@@ -44,13 +44,17 @@ layout settings sharedModel _ =
         }
 
 
+htmlIf : Bool -> Html msg -> Html msg
+htmlIf check htmlVal =
+    if check then
+        htmlVal
+
+    else
+        text ""
+
+
 
 -- MODEL
-
-
-type Formatting
-    = DefaultFormatting
-    | ShowHeading
 
 
 type Alignment
@@ -77,7 +81,8 @@ sepiaColors =
 type alias Model =
     { -- alignment : Alignment, -- TODO: Is there still a need for this?
       colorScheme : ColorScheme
-    , formatting : Formatting
+    , showHeading : Bool
+    , showPageNumbers : Bool
     }
 
 
@@ -85,7 +90,8 @@ init : () -> ( Model, Effect Msg )
 init _ =
     ( { -- alignment = AlignTop,
         colorScheme = Light
-      , formatting = ShowHeading
+      , showHeading = True
+      , showPageNumbers = True
       }
     , Effect.none
     )
@@ -98,7 +104,8 @@ init _ =
 type Msg
     = -- SetAlignment Alignment |
       SetColorScheme ColorScheme
-    | SetFormatting Formatting
+    | SetShowHeading Bool
+    | SetShowPageNumbers Bool
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -113,8 +120,13 @@ update msg model =
             , Effect.none
             )
 
-        SetFormatting formatting ->
-            ( { model | formatting = formatting }
+        SetShowHeading val ->
+            ( { model | showHeading = val }
+            , Effect.none
+            )
+
+        SetShowPageNumbers val ->
+            ( { model | showPageNumbers = val }
             , Effect.none
             )
 
@@ -131,6 +143,9 @@ subscriptions _ =
 viewImage : Song -> ReadDirection -> Model -> String -> Int -> File -> Html msg
 viewImage song readDirection model readOnlyId index file =
     let
+        pageNumHeight =
+            Css.rem 2
+
         headerHeight =
             Css.rem 5
 
@@ -169,26 +184,29 @@ viewImage song readDirection model readOnlyId index file =
                     border_b_2
             ]
         ]
-        [ if index == 0 && model.formatting == ShowHeading then
+        [ htmlIf model.showPageNumbers <|
             div
-                [ css
-                    [ Css.height headerHeight
-                    , text_center
+                [ css [ Css.height pageNumHeight, text_center ] ]
+                [ p [ css [ font_sans, text_sm ] ]
+                    [ text <|
+                        String.fromInt (index + 1)
+                            ++ " / "
+                            ++ String.fromInt numOfPages
                     ]
                 ]
-                [ h2
-                    [ css
-                        [ font_sans
-                        , font_medium
-                        , mb_2
-                        ]
+        , htmlIf (model.showHeading && index == 0) <|
+            div
+                [ css [ Css.height headerHeight, text_center ] ]
+                (if model.showHeading && index == 0 then
+                    [ h2
+                        [ css [ font_sans, font_medium, mb_2 ] ]
+                        [ text song.name ]
+                    , p [] [ song.interpreter |> withDefault "" |> text ]
                     ]
-                    [ text song.name ]
-                , p [] [ song.interpreter |> withDefault "" |> text ]
-                ]
 
-          else
-            text ""
+                 else
+                    []
+                )
         , div
             [ css <|
                 [ flex
@@ -202,9 +220,25 @@ viewImage song readDirection model readOnlyId index file =
                 --     AlignBottom ->
                 --         justify_end
                 ]
-                    ++ (if index == 0 then
+                    ++ (if (model.showHeading && index == 0) || model.showPageNumbers then
                             [ Css.height <|
-                                Css.calc (Css.pct 100) Css.minus headerHeight
+                                Css.calc (Css.pct 100)
+                                    Css.minus
+                                    (Css.calc
+                                        (if model.showPageNumbers then
+                                            pageNumHeight
+
+                                         else
+                                            Css.rem 0
+                                        )
+                                        Css.plus
+                                        (if model.showHeading && index == 0 then
+                                            headerHeight
+
+                                         else
+                                            Css.rem 0
+                                        )
+                                    )
                             , overflow_hidden
                             ]
 
@@ -293,16 +327,15 @@ getSidebar model =
 
         formattingButtons =
             [ button
-                [ css [ btnCss, markSelectedFor ShowHeading model.formatting ]
-                , onClick
-                    (if model.formatting == DefaultFormatting then
-                        SetFormatting ShowHeading
-
-                     else
-                        SetFormatting DefaultFormatting
-                    )
+                [ css [ btnCss, markSelectedFor True model.showHeading ]
+                , onClick (SetShowHeading (not model.showHeading))
                 ]
                 [ text "H" ]
+            , button
+                [ css [ btnCss, markSelectedFor True model.showPageNumbers ]
+                , onClick (SetShowPageNumbers (not model.showPageNumbers))
+                ]
+                [ text "1️⃣" ]
             ]
 
         -- alignmentButtons =

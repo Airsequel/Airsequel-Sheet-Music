@@ -53,11 +53,10 @@ songDecoder withFiles =
         |> JDP.required "interpreter" (JD.maybe JD.string)
         |> JDP.custom
             (JD.field "numberOfFiles" JD.string
-                |> JD.andThen
+                |> JD.map
                     (\s ->
                         String.toInt s
                             |> Maybe.withDefault 0
-                            |> JD.succeed
                     )
             )
         |> JDP.required "filetypes" (JD.maybe JD.string)

@@ -12,6 +12,6 @@ own file, so they can be imported by `Effect.elm`
 
 -}
 type alias Model =
-    { readonlyId : Maybe String
-    , songsResult : GraphQL.Response (List Song)
-    }
+  { readonlyId : Maybe String
+  , songsResult : GraphQL.Response (List Song)
+  }

@@ -12,5 +12,5 @@ own file, so they can be imported by `Effect.elm`
 
 -}
 type Msg
-    = OnSongs (GraphQL.Response (List Song))
-    | SubmittedReadonlyId String
+  = OnSongs (GraphQL.Response (List Song))
+  | SubmittedReadonlyId String

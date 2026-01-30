@@ -13,68 +13,57 @@ import View exposing (View)
 
 page : Shared.Model -> Route { songId : String } -> Page Model Msg
 page sharedModel route =
-    Page.new
-        { init = init sharedModel route
-        , update = update
-        , subscriptions = \_ -> Sub.none
-        , view = view sharedModel
-        }
-        |> Page.withLayout
-            (\model ->
-                Layouts.PlayLayout
-                    { songId = route.params.songId
-                    , readDirection = ReadHorizontal
-                    , songsResult = model.songsResult
-                    }
-            )
-
+  Page.new
+    { init = init sharedModel route
+    , update = update
+    , subscriptions = \_ -> Sub.none
+    , view = view sharedModel
+    }
+    |> Page.withLayout
+        (\model -> Layouts.PlayLayout
+            { songId = route.params.songId
+            , readDirection = ReadHorizontal
+            , songsResult = model.songsResult
+            }
+        )
 
 
 -- INIT
-
-
 type alias Model =
-    { songsResult : GraphQL.Response (List Song) }
+  { songsResult : GraphQL.Response (List Song) }
 
 
-init : Shared.Model -> Route { songId : String } -> () -> ( Model, Effect Msg )
+init : Shared.Model -> Route { songId : String } -> () -> (Model, Effect Msg)
 init sharedModel route _ =
-    ( { songsResult = Ok { data = Nothing, errors = Nothing } }
-    , case sharedModel.readonlyId of
-        Nothing ->
-            Effect.none
-
-        Just readonlyId ->
-            Shared.getSongWithFiles
-                readonlyId
-                route.params.songId
-                OnSong
-    )
-
+  ( { songsResult = Ok { data = Nothing, errors = Nothing } }
+  , case sharedModel.readonlyId of
+      Nothing ->
+        Effect.none
+      Just readonlyId ->
+        Shared.getSongWithFiles
+          readonlyId
+          route.params.songId
+          OnSong
+  )
 
 
 -- UPDATE
-
-
 type Msg
-    = OnSong (GraphQL.Response (List Song))
+  = OnSong (GraphQL.Response (List Song))
 
 
-update : Msg -> Model -> ( Model, Effect Msg )
+update : Msg -> Model -> (Model, Effect Msg)
 update msg model =
-    case msg of
-        OnSong songsResult ->
-            ( { model | songsResult = songsResult }
-            , Effect.none
-            )
-
+  case msg of
+    OnSong songsResult ->
+      ( { model | songsResult = songsResult }
+      , Effect.none
+      )
 
 
 -- VIEW
-
-
 view : Shared.Model -> Model -> View Msg
 view _ _ =
-    { title = "Horizontal Song View"
-    , body = []
-    }
+  { title = "Horizontal Song View"
+  , body = []
+  }

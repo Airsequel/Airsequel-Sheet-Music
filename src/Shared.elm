@@ -1,9 +1,13 @@
 module Shared exposing
-    ( Flags, decoder
-    , Model, Msg
-    , init, update, subscriptions
-    , getSongWithFiles
-    )
+  ( Flags
+  , decoder
+  , Model
+  , Msg
+  , init
+  , update
+  , subscriptions
+  , getSongWithFiles
+  )
 
 {-|
 
@@ -13,7 +17,6 @@ module Shared exposing
 @docs getSongWithFiles
 
 -}
-
 import Effect exposing (Effect)
 import GraphQL
 import Json.Decode
@@ -26,9 +29,9 @@ import Utils exposing (host)
 
 getSongs : String -> Effect Msg
 getSongs readonlyId =
-    Effect.sendCmd <|
-        GraphQL.run
-            { query = """
+  Effect.sendCmd <|
+    GraphQL.run
+      { query = """
                 query Songs {
                     songs_json {
                         rowid
@@ -43,31 +46,32 @@ getSongs readonlyId =
                     }
                 }
                 """
-            , decoder = songsDecoder False
-            , root = "songs_json"
-            , url =
-                host
-                    ++ "/readonly/"
-                    ++ readonlyId
-                    ++ "/graphql"
-            , headers = []
-            , on = Shared.Msg.OnSongs
-            , variables = Nothing
-            }
+      , decoder = songsDecoder False
+      , root = "songs_json"
+      , url = host
+        ++ "/readonly/"
+        ++ readonlyId
+        ++ "/graphql"
+      , headers = []
+      , on = Shared.Msg.OnSongs
+      , variables = Nothing
+      }
 
 
 getSongWithFiles :
-    String
-    -> String
-    -> (GraphQL.Response (List Types.Song.Song) -> msg)
-    -> Effect msg
+  String
+  -> String
+  -> (GraphQL.Response (List Types.Song.Song) -> msg)
+  -> Effect msg
 getSongWithFiles readonlyId songId msg =
-    Effect.sendCmd <|
-        GraphQL.run
-            { query = """
+  Effect.sendCmd <|
+    GraphQL.run
+      { query = """
             query SongsWithFiles {
                 songs_with_files_json (
-                    filter: { rowid: { eq: """ ++ songId ++ """ } }
+                    filter: { rowid: { eq: """
+        ++ songId
+        ++ """ } }
                 ) {
                     rowid
                     name
@@ -82,100 +86,84 @@ getSongWithFiles readonlyId songId msg =
                 }
             }
             """
-            , decoder = songsDecoder True
-            , root = "songs_with_files_json"
-            , url =
-                host
-                    ++ "/readonly/"
-                    ++ readonlyId
-                    ++ "/graphql"
-            , headers = []
-            , on = msg
-            , variables = Nothing
-            }
-
+      , decoder = songsDecoder True
+      , root = "songs_with_files_json"
+      , url = host
+        ++ "/readonly/"
+        ++ readonlyId
+        ++ "/graphql"
+      , headers = []
+      , on = msg
+      , variables = Nothing
+      }
 
 
 -- FLAGS
-
-
 type alias Flags =
-    { readonlyId : Maybe String }
+  { readonlyId : Maybe String }
 
 
 decoder : Json.Decode.Decoder Flags
 decoder =
-    Json.Decode.map Flags
-        (Json.Decode.field "readonlyId" (Json.Decode.maybe Json.Decode.string))
-
+  Json.Decode.map
+    Flags
+    (Json.Decode.field "readonlyId" (Json.Decode.maybe Json.Decode.string))
 
 
 -- INIT
-
-
 type alias Model =
-    Shared.Model.Model
+  Shared.Model.Model
 
 
-init : Result Json.Decode.Error Flags -> Route () -> ( Model, Effect Msg )
+init : Result Json.Decode.Error Flags -> Route () -> (Model, Effect Msg)
 init flagsResult _ =
-    let
-        emptyModel =
-            { readonlyId = Nothing
-            , songsResult =
-                Ok
-                    { data = Nothing
-                    , errors = Nothing
-                    }
-            }
-    in
-    case flagsResult of
-        Ok flags ->
-            case flags.readonlyId of
-                Just readonlyId ->
-                    ( { emptyModel | readonlyId = Just readonlyId }
-                    , getSongs readonlyId
-                    )
-
-                Nothing ->
-                    ( emptyModel, Effect.none )
-
-        Err _ ->
-            ( emptyModel, Effect.none )
-
+  let
+    emptyModel =
+      { readonlyId = Nothing
+      , songsResult = Ok
+          { data = Nothing
+          , errors = Nothing
+          }
+      }
+  in
+  case flagsResult of
+    Ok flags ->
+      case flags.readonlyId of
+        Just readonlyId ->
+          ( { emptyModel | readonlyId = Just readonlyId }
+          , getSongs readonlyId
+          )
+        Nothing ->
+          ( emptyModel, Effect.none )
+    Err _ ->
+      ( emptyModel, Effect.none )
 
 
 -- UPDATE
-
-
 type alias Msg =
-    Shared.Msg.Msg
+  Shared.Msg.Msg
 
 
-update : Route () -> Msg -> Model -> ( Model, Effect Msg )
+update : Route () -> Msg -> Model -> (Model, Effect Msg)
 update _ msg model =
-    case msg of
-        Shared.Msg.SubmittedReadonlyId readonlyId ->
-            ( { model
-                | readonlyId = Just readonlyId
-                , songsResult = Ok { data = Nothing, errors = Nothing }
-              }
-            , Effect.batch
-                [ Effect.saveReadonlyId readonlyId
-                , getSongs readonlyId
-                ]
-            )
-
-        Shared.Msg.OnSongs songsResult ->
-            ( { model | songsResult = songsResult }
-            , Effect.none
-            )
-
+  case msg of
+    Shared.Msg.SubmittedReadonlyId readonlyId ->
+      ( { model
+          | readonlyId = Just readonlyId
+          , songsResult = Ok { data = Nothing, errors = Nothing }
+        }
+      , Effect.batch
+          [ Effect.saveReadonlyId readonlyId
+          , getSongs readonlyId
+          ]
+      )
+    Shared.Msg.OnSongs songsResult ->
+      ( { model | songsResult = songsResult }
+      , Effect.none
+      )
 
 
 -- SUBSCRIPTIONS
-
-
 subscriptions : Route () -> Model -> Sub Msg
 subscriptions _ _ =
-    Sub.none
+  Sub.none

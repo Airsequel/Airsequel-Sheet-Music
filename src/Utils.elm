@@ -5,7 +5,7 @@ import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
 import Svg.Styled as Svg
-import Svg.Styled.Attributes exposing (d, viewBox)
+import Svg.Styled.Attributes exposing (d, fill, viewBox)
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
 
@@ -38,6 +38,7 @@ arrowIconVert : List Css.Style -> Html msg
 arrowIconVert styles =
   Svg.svg
     [ viewBox "0 0 24 24"
+    , fill "currentColor"
     , css <| [ block, w_full, h_full ] ++ styles
     ]
     [ Svg.path

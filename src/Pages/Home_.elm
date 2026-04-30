@@ -13,7 +13,7 @@ import Shared
 import Shared.Model exposing (ColorPref(..))
 import Shared.Msg exposing (Msg)
 import Svg.Styled as Svg
-import Svg.Styled.Attributes exposing (d, viewBox)
+import Svg.Styled.Attributes exposing (d, fill, viewBox)
 import Tailwind.Breakpoints exposing (..)
 import Tailwind.Utilities exposing (..)
 import Theme exposing (Theme)
@@ -369,6 +369,7 @@ viewSongsTable theme searchStrMb songs =
     documentIcon styles =
       Svg.svg
         [ viewBox "0 0 24 24"
+        , fill "currentColor"
         , css styles
         ]
         [ Svg.path

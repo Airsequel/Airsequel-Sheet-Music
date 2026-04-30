@@ -70,43 +70,52 @@ subscriptions _ =
 -- VIEW
 
 
-colorPrefControl : Theme -> ColorPref -> Html.Styled.Html Msg
-colorPrefControl theme current =
+colorPrefControl : Theme -> Bool -> ColorPref -> Html.Styled.Html Msg
+colorPrefControl theme darkMode current =
   let
-    btn pref label hint =
-      let
-        selected =
-          pref == current
-      in
-      button
-        [ onClick (SetColorPref pref)
-        , title hint
-        , css <|
-            [ cursor_pointer
-            , inline_block
-            , w_8
-            , h_8
-            , border
-            , border_solid
-            , border_color theme.border
-            , text_color theme.textPrimary
-            , text_lg
-            , leading_none
-            , Css.hover [ bg_color theme.bgRowAlt ]
-            ]
-            ++ (if selected
-                  then [ bg_color theme.bgAccentSoft ]
-                  else [ bg_color theme.bgPanel ]
-              )
-        ]
-        [ span [ css [ relative ] ] [ text label ] ]
+    nextPref =
+      case current of
+        Auto ->
+          if darkMode
+            then Light
+            else Dark
+        _ ->
+          Auto
+
+    label =
+      if darkMode
+        then "☀"
+        else "☾"
+
+    hint =
+      case ( current, darkMode ) of
+        ( Auto, True ) ->
+          "Override to light mode"
+        ( Auto, False ) ->
+          "Override to dark mode"
+        _ ->
+          "Reset to system preference"
   in
-  div
-    [ css [ inline_flex, rounded, overflow_hidden ] ]
-    [ btn Light "☀" "Light mode"
-    , btn Auto "◐" "Match system preference"
-    , btn Dark "☾" "Dark mode"
+  button
+    [ onClick (SetColorPref nextPref)
+    , title hint
+    , css
+        [ cursor_pointer
+        , inline_block
+        , w_8
+        , h_8
+        , rounded_full
+        , border
+        , border_solid
+        , border_color theme.border
+        , bg_color theme.bgPanel
+        , text_color theme.textPrimary
+        , text_lg
+        , leading_none
+        , Css.hover [ bg_color theme.bgRowAlt ]
+        ]
     ]
+    [ span [ css [ relative ] ] [ text label ] ]
 
 
 view :
@@ -167,7 +176,7 @@ view settings sharedModel { toContentMsg, content } =
                       [ text "Airsequel Sheet Music" ]
                   ]
               , Html.Styled.map toContentMsg <|
-                  colorPrefControl theme sharedModel.colorPref
+                  colorPrefControl theme darkMode sharedModel.colorPref
               ]
           , div
               []

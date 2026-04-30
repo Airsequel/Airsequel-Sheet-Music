@@ -141,7 +141,7 @@ viewSong theme _ song =
               , bg_color theme.bgAccent
               , mr_2
               , no_underline
-              , text_color theme.textLink
+              , text_color theme.textOnAccent
               , border
               , border_solid
               , border_color theme.borderAccent

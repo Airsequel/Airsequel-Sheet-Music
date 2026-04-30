@@ -27,6 +27,7 @@ type alias Theme =
   , textMuted : Color
   , textPlaceholder : Color
   , textLink : Color
+  , textOnAccent : Color
   , textError : Color
   , border : Color
   , borderMuted : Color
@@ -55,6 +56,7 @@ light =
   , textMuted = gray_500
   , textPlaceholder = gray_400
   , textLink = blue_800
+  , textOnAccent = blue_800
   , textError = red_800
   , border = gray_400
   , borderMuted = gray_300
@@ -74,8 +76,8 @@ dark =
   , bgPanel = neutral_800
   , bgRowAlt = neutral_700
   , bgInput = neutral_700
-  , bgButton = blue_800
-  , bgAccent = blue_800
+  , bgButton = blue_900
+  , bgAccent = blue_900
   , bgAccentMuted = blue_900
   , bgError = red_900
   , textPrimary = neutral_100
@@ -83,10 +85,11 @@ dark =
   , textMuted = neutral_400
   , textPlaceholder = neutral_500
   , textLink = blue_300
+  , textOnAccent = white
   , textError = red_300
   , border = neutral_600
   , borderMuted = neutral_700
-  , borderAccent = blue_400
+  , borderAccent = blue_700
   , borderError = red_300
   , sidebarBg = neutral_800
   , sidebarBtn = neutral_700

@@ -131,6 +131,7 @@ buttonStyle theme add =
   css <|
     [ inline_block
     , bg_color theme.bgButton
+    , text_color theme.textOnAccent
     , rounded
     , w_6
     , h_6
@@ -235,7 +236,7 @@ viewGettingStarted theme sharedModel model =
                   , border
                   , border_solid
                   , border_color theme.borderAccent
-                  , text_color theme.textLink
+                  , text_color theme.textOnAccent
                   , max_w_max
                   , bg_color theme.bgAccent
                   ]

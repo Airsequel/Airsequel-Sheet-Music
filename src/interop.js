@@ -29,4 +29,21 @@ export const onReady = ({ env, app }) => {
       darkQuery.addListener(notify)
     }
   }
+
+  // Translate vertical wheel input into horizontal scroll
+  // for containers marked with data-scroll-direction="horizontal".
+  document.addEventListener("wheel", (event) => {
+    let element = event.target
+    while (element && element !== document.body) {
+      if (element.dataset
+          && element.dataset.scrollDirection === "horizontal") {
+        if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+          event.preventDefault()
+          element.scrollLeft += event.deltaY
+        }
+        return
+      }
+      element = element.parentElement
+    }
+  }, { passive: false })
 }

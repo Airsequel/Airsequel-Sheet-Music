@@ -87,9 +87,9 @@ init : Shared.Model -> () -> ( Model, Effect Msg )
 init sharedModel _ =
   ( { -- alignment = AlignTop,
     colorScheme =
-      if Shared.Model.isDark sharedModel
-        then Dark
-        else Light
+        if Shared.Model.isDark sharedModel
+          then Dark
+          else Light
     , showHeading = True
     , showPageNumbers = True
     }
@@ -492,7 +492,7 @@ viewPages settings sharedModel model song =
         |> Maybe.withDefault ""
   in
   div
-    [ css
+    (css
         [ case settings.readDirection of
           ReadHorizontal ->
             h_full
@@ -509,7 +509,13 @@ viewPages settings sharedModel model song =
             Css.backgroundColor sepiaColors.bg -- Make bg color cover the whole page:
         , overflow_scroll
         ]
-    ]
+        :: (case settings.readDirection of
+            ReadHorizontal ->
+              [ attribute "data-scroll-direction" "horizontal" ]
+            ReadVertical ->
+              []
+        )
+    )
     [ viewSong sharedModel settings.readDirection model readOnlyId song ]
 
 

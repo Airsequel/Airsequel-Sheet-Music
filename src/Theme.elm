@@ -76,32 +76,32 @@ light =
 
 dark : Theme
 dark =
-  { bgPage = gray_900
-  , bgPanel = gray_800
-  , bgRowAlt = gray_700
-  , bgInput = gray_700
-  , bgButton = blue_900
-  , bgButtonHover = blue_800
-  , bgButtonActive = blue_700
-  , bgAccentSoft = blue_900
-  , bgAccent = blue_800
-  , bgAccentMuted = blue_900
+  { bgPage = neutral_900
+  , bgPanel = neutral_800
+  , bgRowAlt = neutral_700
+  , bgInput = neutral_700
+  , bgButton = neutral_700
+  , bgButtonHover = neutral_600
+  , bgButtonActive = neutral_500
+  , bgAccentSoft = neutral_700
+  , bgAccent = neutral_700
+  , bgAccentMuted = neutral_700
   , bgError = red_900
-  , textPrimary = gray_100
-  , textSecondary = gray_300
-  , textMuted = gray_400
-  , textPlaceholder = gray_500
-  , textLink = blue_300
+  , textPrimary = neutral_100
+  , textSecondary = neutral_300
+  , textMuted = neutral_400
+  , textPlaceholder = neutral_500
+  , textLink = neutral_100
   , textError = red_300
-  , border = gray_600
-  , borderMuted = gray_700
-  , borderAccent = blue_300
+  , border = neutral_600
+  , borderMuted = neutral_700
+  , borderAccent = neutral_300
   , borderError = red_300
-  , sidebarBg = gray_800
-  , sidebarBtn = gray_700
-  , sidebarBtnHover = gray_600
-  , sidebarBtnActive = gray_500
-  , sidebarBtnSelected = gray_500
+  , sidebarBg = neutral_800
+  , sidebarBtn = neutral_700
+  , sidebarBtnHover = neutral_600
+  , sidebarBtnActive = neutral_500
+  , sidebarBtnSelected = neutral_500
   }
 
 
@@ -123,7 +123,8 @@ globalSnippets darkMode =
             then Css.hsl 0 0 0.1
             else Css.hsl 0 0 0.95
       ]
-  , Css.Global.selector "tr:nth-child(even)"
+  , Css.Global.selector
+      "tr:nth-child(even)"
       [ Css.backgroundColor <|
           if darkMode
             then Css.rgb 42 42 42

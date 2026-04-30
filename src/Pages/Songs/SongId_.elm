@@ -9,8 +9,9 @@ import Layouts
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
-import Tailwind.Theme exposing (..)
+import Shared.Model
 import Tailwind.Utilities exposing (..)
+import Theme exposing (Theme)
 import Types.Song exposing (Song)
 import Utils exposing (arrowIconVert, viewHttpError)
 import View exposing (View)
@@ -70,8 +71,8 @@ update msg model =
 -- VIEW
 
 
-viewSong : String -> Song -> Html msg
-viewSong _ song =
+viewSong : Theme -> String -> Song -> Html msg
+viewSong theme _ song =
   let
     keySpan value =
       span
@@ -137,13 +138,13 @@ viewSong _ song =
               , rounded
               , px_2
               , py_1
-              , bg_color blue_200
+              , bg_color theme.bgAccent
               , mr_2
               , no_underline
-              , text_color blue_800
+              , text_color theme.textLink
               , border
               , border_solid
-              , border_color blue_800
+              , border_color theme.borderAccent
               , mb_2
               ]
         in
@@ -180,11 +181,16 @@ view sharedModel model =
         Just songs ->
           case songs.root of
             song :: _ ->
+              let
+                theme =
+                  Theme.fromDarkMode (Shared.Model.isDark sharedModel)
+              in
               { title = song.name
               , body = [ toUnstyled <|
                     div
                       []
                       [ viewSong
+                          theme
                           (Maybe.withDefault
                               ""
                               sharedModel.readonlyId

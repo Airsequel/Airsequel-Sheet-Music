@@ -1,6 +1,7 @@
 module Shared.Msg exposing (Msg(..))
 
 import GraphQL
+import Shared.Model exposing (ColorPref)
 import Types.Song exposing (Song)
 
 
@@ -14,3 +15,5 @@ own file, so they can be imported by `Effect.elm`
 type Msg
   = OnSongs (GraphQL.Response (List Song))
   | SubmittedReadonlyId String
+  | SetColorPref ColorPref
+  | SystemDarkChanged Bool

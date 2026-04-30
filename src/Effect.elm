@@ -9,6 +9,8 @@ port module Effect exposing
   , loadExternalUrl
   , clearReadonlyId
   , saveReadonlyId
+  , saveColorPref
+  , sendSharedMsg
   , map
   , toCmd
   )
@@ -17,9 +19,9 @@ port module Effect exposing
 
 @docs Effect
 @docs none, batch
-@docs sendCmd, sendMsg
+@docs sendCmd, sendMsg, sendSharedMsg
 @docs pushRoute, replaceRoute, loadExternalUrl
-@docs clearReadonlyId, saveReadonlyId
+@docs clearReadonlyId, saveReadonlyId, saveColorPref
 
 @docs map, toCmd
 
@@ -71,6 +73,14 @@ clearReadonlyId =
     }
 
 
+saveColorPref : String -> Effect msg
+saveColorPref pref =
+  SendToLocalStorage
+    { key = "colorPref"
+    , value = Json.Encode.string pref
+    }
+
+
 -- BASICS
 
 {-| Don't send any effect.
@@ -101,6 +111,13 @@ sendMsg msg =
   Task.succeed msg
     |> Task.perform identity
     |> SendCmd
+
+
+{-| Dispatch a message to the shared update function from any page or layout.
+-}
+sendSharedMsg : Shared.Msg.Msg -> Effect msg
+sendSharedMsg =
+  SendSharedMsg
 
 
 -- ROUTING

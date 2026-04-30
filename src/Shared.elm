@@ -21,11 +21,34 @@ module Shared exposing
 import Effect exposing (Effect)
 import GraphQL
 import Json.Decode
+import Ports
 import Route exposing (Route)
-import Shared.Model
+import Shared.Model exposing (ColorPref(..))
 import Shared.Msg
 import Types.Song exposing (songsDecoder)
 import Utils exposing (host)
+
+
+colorPrefFromString : String -> ColorPref
+colorPrefFromString str =
+  case str of
+    "light" ->
+      Light
+    "dark" ->
+      Dark
+    _ ->
+      Auto
+
+
+colorPrefToString : ColorPref -> String
+colorPrefToString pref =
+  case pref of
+    Auto ->
+      "auto"
+    Light ->
+      "light"
+    Dark ->
+      "dark"
 
 
 getSongs : String -> Effect Msg
@@ -101,14 +124,21 @@ getSongWithFiles readonlyId songId msg =
 
 -- FLAGS
 type alias Flags =
-  { readonlyId : Maybe String }
+  { readonlyId : Maybe String
+  , colorPref : ColorPref
+  , systemDark : Bool
+  }
 
 
 decoder : Json.Decode.Decoder Flags
 decoder =
-  Json.Decode.map
+  Json.Decode.map3
     Flags
     (Json.Decode.field "readonlyId" (Json.Decode.maybe Json.Decode.string))
+    (Json.Decode.field "colorPref" Json.Decode.string
+      |> Json.Decode.map colorPrefFromString
+    )
+    (Json.Decode.field "systemDark" Json.Decode.bool)
 
 
 -- INIT
@@ -125,17 +155,26 @@ init flagsResult _ =
           { data = Nothing
           , errors = Nothing
           }
+      , colorPref = Auto
+      , systemDark = False
       }
   in
   case flagsResult of
     Ok flags ->
+      let
+        themedModel =
+          { emptyModel
+            | colorPref = flags.colorPref
+            , systemDark = flags.systemDark
+          }
+      in
       case flags.readonlyId of
         Just readonlyId ->
-          ( { emptyModel | readonlyId = Just readonlyId }
+          ( { themedModel | readonlyId = Just readonlyId }
           , getSongs readonlyId
           )
         Nothing ->
-          ( emptyModel, Effect.none )
+          ( themedModel, Effect.none )
     Err _ ->
       ( emptyModel, Effect.none )
 
@@ -162,6 +201,14 @@ update _ msg model =
       ( { model | songsResult = songsResult }
       , Effect.none
       )
+    Shared.Msg.SetColorPref pref ->
+      ( { model | colorPref = pref }
+      , Effect.saveColorPref (colorPrefToString pref)
+      )
+    Shared.Msg.SystemDarkChanged isDark ->
+      ( { model | systemDark = isDark }
+      , Effect.none
+      )
 
 
 -- SUBSCRIPTIONS
@@ -169,4 +216,4 @@ update _ msg model =
 
 subscriptions : Route () -> Model -> Sub Msg
 subscriptions _ _ =
-  Sub.none
+  Ports.systemDarkChanged Shared.Msg.SystemDarkChanged

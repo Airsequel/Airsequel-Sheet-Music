@@ -6,16 +6,17 @@ import Effect exposing (Effect(..))
 import GraphQL
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
-import Html.Styled.Events exposing (onInput, onSubmit)
+import Html.Styled.Events exposing (onClick, onInput, onSubmit)
 import Page exposing (Page)
 import Route exposing (Route)
 import Shared
+import Shared.Model exposing (ColorPref(..))
 import Shared.Msg exposing (Msg)
 import Svg.Styled as Svg
 import Svg.Styled.Attributes exposing (d, viewBox)
 import Tailwind.Breakpoints exposing (..)
-import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
+import Theme exposing (Theme)
 import Types.Song exposing (Song)
 import Utils exposing (addStarIf, arrowIconVert, host, viewHttpError)
 import View exposing (View)
@@ -61,6 +62,7 @@ type Msg
   = EnteredReadonlyId String
   | EnteredSearch String
   | SubmittedReadonlyId
+  | SelectedColorPref ColorPref
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -73,6 +75,10 @@ update msg model =
     EnteredSearch searchStr ->
       ( { model | searchStrMb = Just searchStr }
       , Effect.none
+      )
+    SelectedColorPref pref ->
+      ( model
+      , Effect.sendSharedMsg (Shared.Msg.SetColorPref pref)
       )
     SubmittedReadonlyId ->
       let
@@ -120,11 +126,11 @@ update msg model =
 -- VIEW
 
 
-buttonStyle : List Css.Style -> Attribute msg
-buttonStyle add =
+buttonStyle : Theme -> List Css.Style -> Attribute msg
+buttonStyle theme add =
   css <|
     [ inline_block
-    , bg_color blue_200
+    , bg_color theme.bgButton
     , rounded
     , w_6
     , h_6
@@ -137,8 +143,13 @@ type SubmitButtonOption
   | NoSubmitButton
 
 
-viewReadonlyIdForm : SubmitButtonOption -> Shared.Model -> Model -> Html Msg
-viewReadonlyIdForm hasSubmitButton sharedModel model =
+viewReadonlyIdForm :
+  Theme
+  -> SubmitButtonOption
+  -> Shared.Model
+  -> Model
+  -> Html Msg
+viewReadonlyIdForm theme hasSubmitButton sharedModel model =
   Html.Styled.form
     [ onSubmit SubmittedReadonlyId
     , css [ inline_block ]
@@ -161,11 +172,12 @@ viewReadonlyIdForm hasSubmitButton sharedModel model =
             [ inline_block
             , border
             , border_solid
-            , border_color gray_400
+            , border_color theme.border
             , rounded
             , px_2
             , py_1
-            , text_color gray_500
+            , bg_color theme.bgInput
+            , text_color theme.textPrimary
             ]
         ]
         []
@@ -177,11 +189,12 @@ viewReadonlyIdForm hasSubmitButton sharedModel model =
               [ inline_block
               , border
               , border_solid
-              , border_color gray_400
+              , border_color theme.border
               , rounded
               , px_2
               , py_1
-              , text_color gray_500
+              , bg_color theme.bgInput
+              , text_color theme.textPrimary
               , ml_2
               , cursor_pointer
               ]
@@ -192,8 +205,8 @@ viewReadonlyIdForm hasSubmitButton sharedModel model =
     ]
 
 
-viewGettingStarted : Shared.Model -> Model -> List (Html Msg)
-viewGettingStarted sharedModel model =
+viewGettingStarted : Theme -> Shared.Model -> Model -> List (Html Msg)
+viewGettingStarted theme sharedModel model =
   [ h2 [ css [ text_2xl, mb_8 ] ] [ text "Getting Started" ]
   , ol
       [ css [ list_decimal, ml_8 ] ]
@@ -221,10 +234,10 @@ viewGettingStarted sharedModel model =
                   , rounded
                   , border
                   , border_solid
-                  , border_color blue_800
-                  , text_color blue_800
+                  , border_color theme.borderAccent
+                  , text_color theme.textLink
                   , max_w_max
-                  , bg_color blue_200
+                  , bg_color theme.bgAccent
                   ]
               ]
               [ text "Create Database" ]
@@ -247,29 +260,29 @@ viewGettingStarted sharedModel model =
                     post it here in the input field, and submit:
                     """
               ]
-          , viewReadonlyIdForm HasSubmitButton sharedModel model
+          , viewReadonlyIdForm theme HasSubmitButton sharedModel model
           ]
       ]
-  , hr [ css [ mt_16, mb_4 ] ] []
+  , hr [ css [ mt_16, mb_4, border_color theme.borderMuted ] ] []
   , footer
       [ css
           [ px_10
           , py_4
           , text_sm
           , text_center
-          , text_color gray_500
+          , text_color theme.textMuted
           ]
       ]
       [ a
           [ href "https://github.com/Airsequel/Airsequel-Sheet-Music"
-          , css [ text_color blue_800, Css.hover [ underline ] ]
+          , css [ text_color theme.textLink, Css.hover [ underline ] ]
           , target "_blank"
           ]
           [ text "GitHub" ]
       , span [ css [ mx_3 ] ] [ text "•" ]
       , a
           [ href "https://twitter.com/Airsequel"
-          , css [ text_color blue_800, Css.hover [ underline ] ]
+          , css [ text_color theme.textLink, Css.hover [ underline ] ]
           , target "_blank"
           ]
           [ text "𝕏" ]
@@ -277,14 +290,14 @@ viewGettingStarted sharedModel model =
   ]
 
 
-viewSong : Song -> Html msg
-viewSong song =
+viewSong : Theme -> Song -> Html msg
+viewSong theme song =
   let
     tdSty additions =
       td
         [ css <|
             [ border_x_4
-            , border_color white
+            , border_color theme.bgPanel
             , px_2
             , py_1
             ]
@@ -302,7 +315,7 @@ viewSong song =
         [ text <| addStarIf song.isFavorite
         , a
             [ href <| "/songs/" ++ String.fromInt song.rowid
-            , css [ underline, text_color blue_800 ]
+            , css [ underline, text_color theme.textLink ]
             ]
             [ text song.name
             ]
@@ -319,19 +332,19 @@ viewSong song =
                 ]
             ]
             [ if song.filetypes == Just "pdf"
-              then span [ buttonStyle [ invisible ] ] [ text "X" ]
+              then span [ buttonStyle theme [ invisible ] ] [ text "X" ]
               else a
                 [ href <|
                     "/songs/horizontal/"
                     ++ String.fromInt song.rowid
-                , buttonStyle [ p_0_dot_5 ]
+                , buttonStyle theme [ p_0_dot_5 ]
                 ]
                 [ arrowIconVert [ rotate_90 ] ]
             , a
                 [ href <|
                     "/songs/vertical/"
                     ++ String.fromInt song.rowid
-                , buttonStyle [ p_0_dot_5 ]
+                , buttonStyle theme [ p_0_dot_5 ]
                 ]
                 [ arrowIconVert [] ]
             ]
@@ -349,8 +362,8 @@ viewSong song =
     ]
 
 
-viewSongsTable : Maybe String -> List Song -> Html Msg
-viewSongsTable searchStrMb songs =
+viewSongsTable : Theme -> Maybe String -> List Song -> Html Msg
+viewSongsTable theme searchStrMb songs =
   let
     documentIcon styles =
       Svg.svg
@@ -374,7 +387,7 @@ viewSongsTable searchStrMb songs =
       th
         [ css <|
             [ border_x_4
-            , border_color white
+            , border_color theme.bgPanel
             , px_2
             , py_1
             ]
@@ -384,7 +397,7 @@ viewSongsTable searchStrMb songs =
     tableHead =
       thead [] <|
         [ tr
-            [ css [ bg_color blue_100 ] ]
+            [ css [ bg_color theme.bgAccentMuted ] ]
             [ thSty [] [ text "Interpreter" ]
             , thSty [] [ text "Song" ]
             , thSty [] [ text "Open" ]
@@ -417,32 +430,32 @@ viewSongsTable searchStrMb songs =
       songs
         |> List.filter filterBySearchStr
         |> List.filter .isFavorite
-        |> List.map viewSong
+        |> List.map (viewSong theme)
   in
   Html.Styled.table
-    [ css [ w_full, bg_color white ] ]
+    [ css [ w_full, bg_color theme.bgPanel ] ]
     [ tableHead
     , tbody [] <|
         (favoriteSongs
           ++ (if List.isEmpty favoriteSongs
               then []
-              else [ tr [ css [ h_8, border_b, border_color gray_400 ] ] []
-              , tr [ css [ h_8, border_t, border_color gray_400 ] ] []
+              else [ tr [ css [ h_8, border_b, border_color theme.border ] ] []
+              , tr [ css [ h_8, border_t, border_color theme.border ] ] []
               ]
           )
           ++ (songs
             |> List.filter filterBySearchStr
             |> List.filter (not << .isFavorite)
-            |> List.map viewSong
+            |> List.map (viewSong theme)
           )
         )
     ]
 
 
-formatGqlErrors : List GraphQL.Error -> Html msg
-formatGqlErrors gqlErrors =
+formatGqlErrors : Theme -> List GraphQL.Error -> Html msg
+formatGqlErrors theme gqlErrors =
   div
-    [ css [ text_color red_800 ] ]
+    [ css [ text_color theme.textError ] ]
     [ p
         [ css [ font_bold ] ]
         [ text <|
@@ -466,8 +479,11 @@ formatGqlErrors gqlErrors =
     ]
 
 
-viewToolbar : GraphQL.Response (List Song) -> List (Html Msg)
-viewToolbar songsResult =
+viewToolbar :
+  Theme
+  -> GraphQL.Response (List Song)
+  -> List (Html Msg)
+viewToolbar theme songsResult =
   case songsResult of
     Ok gqlRes ->
       [ case gqlRes.data of
@@ -489,11 +505,13 @@ viewToolbar songsResult =
                     , css
                         [ border
                         , border_solid
-                        , border_color gray_400
+                        , border_color theme.border
                         , rounded
                         , px_4
                         , py_2
                         , w_full
+                        , bg_color theme.bgInput
+                        , text_color theme.textPrimary
                         , sm [ w_80 ]
                         ]
                     , placeholder "Search"
@@ -515,7 +533,7 @@ viewToolbar songsResult =
           text ""
       , case gqlRes.errors of
         Just gqlErrors ->
-          formatGqlErrors gqlErrors
+          formatGqlErrors theme gqlErrors
         Nothing ->
           text ""
       ]
@@ -523,9 +541,54 @@ viewToolbar songsResult =
       [ viewHttpError error ]
 
 
+colorPrefControl : Theme -> ColorPref -> Html Msg
+colorPrefControl theme current =
+  let
+    btn pref label hint =
+      let
+        selected =
+          pref == current
+      in
+      button
+        [ onClick (SelectedColorPref pref)
+        , title hint
+        , css <|
+            [ cursor_pointer
+            , inline_block
+            , w_8
+            , h_8
+            , border
+            , border_solid
+            , border_color theme.border
+            , text_color theme.textPrimary
+            , text_lg
+            , leading_none
+            , Css.hover [ bg_color theme.bgRowAlt ]
+            ]
+            ++ (if selected
+                  then [ bg_color theme.bgAccentSoft ]
+                  else [ bg_color theme.bgPanel ]
+              )
+        ]
+        [ span [ css [ relative ] ] [ text label ] ]
+  in
+  div
+    [ css [ inline_flex, rounded, overflow_hidden ] ]
+    [ btn Light "☀" "Light mode"
+    , btn Auto "◐" "Match system preference"
+    , btn Dark "☾" "Dark mode"
+    ]
+
+
 view : Shared.Model -> Model -> View Msg
 view sharedModel model =
   let
+    darkMode =
+      Shared.Model.isDark sharedModel
+
+    theme =
+      Theme.fromDarkMode darkMode
+
     idIsProvided =
       sharedModel.readonlyId
       /= Nothing
@@ -541,15 +604,17 @@ view sharedModel model =
   , body = [ toUnstyled <|
         main_
           [ css
-              [ bg_color white
+              [ bg_color theme.bgPanel
+              , text_color theme.textPrimary
               , max_w_5xl
               , mx_auto
               , min_h_full
-              , border_color gray_400
+              , border_color theme.border
               , lg [ border_x ]
               ]
           ]
           [ Css.Global.global globalStyles
+          , Css.Global.global (Theme.globalSnippets darkMode)
           , nav
               [ css
                   [ p_4
@@ -561,6 +626,8 @@ view sharedModel model =
                       [ flex
                       , flex_col
                       , sm [ flex_row ]
+                      , items_center
+                      , gap_3
                       , pb_4
                       ]
                   ]
@@ -570,7 +637,7 @@ view sharedModel model =
                           , text_3xl
                           , mr_4
                           , inline_block
-                          , text_color blue_800
+                          , text_color theme.textLink
                           , grow
                           ]
                       ]
@@ -579,15 +646,17 @@ view sharedModel model =
                       div
                         [ css [ pt_1_dot_5, text_sm ] ]
                         [ label
-                            [ css [ text_color gray_400 ] ]
+                            [ css [ text_color theme.textMuted ] ]
                             [ text "ID: " ]
                         , viewReadonlyIdForm
+                            theme
                             NoSubmitButton
                             sharedModel
                             model
                         ]
+                  , colorPrefControl theme sharedModel.colorPref
                   ]
-                  :: viewToolbar sharedModel.songsResult
+                  :: viewToolbar theme sharedModel.songsResult
               )
           , div
               [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
@@ -600,7 +669,7 @@ view sharedModel model =
                           [ text "Sheet music management app powered by "
                           , a
                               [ href "https://www.airsequel.com"
-                              , css [ underline, text_color blue_800 ]
+                              , css [ underline, text_color theme.textLink ]
                               , target "_blank"
                               ]
                               [ text "Airsequel" ]
@@ -625,11 +694,11 @@ view sharedModel model =
                           errorPara errorTxt =
                             p
                               [ css
-                                  [ bg_color red_200
+                                  [ bg_color theme.bgError
                                   , border
                                   , border_solid
-                                  , border_color red_800
-                                  , text_color red_800
+                                  , border_color theme.borderError
+                                  , text_color theme.textError
                                   , rounded
                                   , px_4
                                   , py_2
@@ -644,6 +713,7 @@ view sharedModel model =
                               case gqlRes.data of
                                 Just songsData ->
                                   [ viewSongsTable
+                                      theme
                                       model.searchStrMb
                                       songsData.root
                                   ]
@@ -659,6 +729,7 @@ view sharedModel model =
                                   in
                                   if readonlyIdEmpty
                                     then viewGettingStarted
+                                      theme
                                       sharedModel
                                       model
                                     else ifNothing

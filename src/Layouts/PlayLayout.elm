@@ -18,8 +18,10 @@ import Layout exposing (Layout)
 import Maybe exposing (withDefault)
 import Route exposing (Route)
 import Shared
+import Shared.Model
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
+import Theme
 import Types.File exposing (File)
 import Types.ReadDirection exposing (ReadDirection(..))
 import Types.Song exposing (Song)
@@ -37,7 +39,7 @@ type alias Props =
 layout : Props -> Shared.Model -> Route () -> Layout () Model Msg contentMsg
 layout settings sharedModel _ =
   Layout.new
-    { init = init
+    { init = init sharedModel
     , update = update
     , view = view settings sharedModel
     , subscriptions = subscriptions
@@ -81,10 +83,13 @@ type alias Model =
   }
 
 
-init : () -> ( Model, Effect Msg )
-init _ =
+init : Shared.Model -> () -> ( Model, Effect Msg )
+init sharedModel _ =
   ( { -- alignment = AlignTop,
-    colorScheme = Light
+    colorScheme =
+      if Shared.Model.isDark sharedModel
+        then Dark
+        else Light
     , showHeading = True
     , showPageNumbers = True
     }
@@ -261,9 +266,12 @@ filesAreType filetype files =
         )
 
 
-getSidebar : Model -> Html Msg
-getSidebar model =
+getSidebar : Shared.Model -> Model -> Html Msg
+getSidebar sharedModel model =
   let
+    theme =
+      Theme.fromDarkMode (Shared.Model.isDark sharedModel)
+
     colorScheme =
       model.colorScheme
 
@@ -271,9 +279,9 @@ getSidebar model =
       Css.batch
         [ cursor_pointer
         , py_1
-        , bg_color gray_100
-        , Css.hover [ bg_color gray_50 ]
-        , Css.active [ bg_color gray_200 ]
+        , bg_color theme.sidebarBtn
+        , Css.hover [ bg_color theme.sidebarBtnHover ]
+        , Css.active [ bg_color theme.sidebarBtnActive ]
         , text_center
         ]
 
@@ -284,7 +292,7 @@ getSidebar model =
           [ border_l_4
           , border_l_color orange_500
           , border_solid
-          , bg_color gray_300
+          , bg_color theme.sidebarBtnSelected
           ]
         else Css.batch
           [ border_l_4
@@ -392,7 +400,7 @@ getSidebar model =
         , h_full
         , align_top
         , gap_y_0_dot_5
-        , bg_color gray_200
+        , bg_color theme.sidebarBg
         ]
     ]
     (formattingButtons
@@ -402,8 +410,8 @@ getSidebar model =
     )
 
 
-viewSong : ReadDirection -> Model -> String -> Song -> Html Msg
-viewSong readDirection model readOnlyId song =
+viewSong : Shared.Model -> ReadDirection -> Model -> String -> Song -> Html Msg
+viewSong sharedModel readDirection model readOnlyId song =
   let
     divImages : List (Html Msg) -> Html Msg
     divImages content =
@@ -462,7 +470,7 @@ viewSong readDirection model readOnlyId song =
         else divImages
         <|
           (if readDirection == ReadHorizontal
-              then [ getSidebar model ]
+              then [ getSidebar sharedModel model ]
               else []
           )
           ++ (song.files
@@ -502,7 +510,7 @@ viewPages settings sharedModel model song =
         , overflow_scroll
         ]
     ]
-    [ viewSong settings.readDirection model readOnlyId song ]
+    [ viewSong sharedModel settings.readDirection model readOnlyId song ]
 
 
 view :

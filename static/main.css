@@ -11,9 +11,4 @@ html {
 
 body {
   height: 100%;
-  background-color: hsl(0, 0%, 95%);
-}
-
-tr:nth-child(even) {
-  background-color: #f2f2f2;
 }

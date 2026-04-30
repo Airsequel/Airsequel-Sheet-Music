@@ -24,6 +24,7 @@ port module Effect exposing
 @docs map, toCmd
 
 -}
+
 import Browser.Navigation
 import Dict exposing (Dict)
 import Json.Encode
@@ -39,7 +40,7 @@ type Effect msg
   = -- BASICS
   None
   | Batch (List (Effect msg))
-  | SendCmd (Cmd msg )-- ROUTING
+  | SendCmd (Cmd msg) -- ROUTING
   | PushUrl String
   | ReplaceUrl String
   | LoadExternalUrl String -- SHARED

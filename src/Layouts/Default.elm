@@ -37,7 +37,7 @@ type alias Model =
   {}
 
 
-init : () -> (Model, Effect Msg)
+init : () -> ( Model, Effect Msg )
 init _ =
   ( {}
   , Effect.none
@@ -49,7 +49,7 @@ type Msg
   = ReplaceMe
 
 
-update : Msg -> Model -> (Model, Effect Msg)
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
   case msg of
     ReplaceMe ->
@@ -64,6 +64,8 @@ subscriptions _ =
 
 
 -- VIEW
+
+
 view :
   Props
   -> { toContentMsg : Msg -> mainMsg
@@ -71,7 +73,7 @@ view :
   , model : Model
   }
   -> View mainMsg
-view settings {content} =
+view settings { content } =
   { title = settings.title
   , body = [ toUnstyled <|
         main_

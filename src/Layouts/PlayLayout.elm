@@ -81,7 +81,7 @@ type alias Model =
   }
 
 
-init : () -> (Model, Effect Msg)
+init : () -> ( Model, Effect Msg )
 init _ =
   ( { -- alignment = AlignTop,
     colorScheme = Light
@@ -100,7 +100,7 @@ type Msg
   | SetShowPageNumbers Bool
 
 
-update : Msg -> Model -> (Model, Effect Msg)
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
   case msg of
     -- SetAlignment alignment ->
@@ -127,6 +127,8 @@ subscriptions _ =
 
 
 -- VIEW
+
+
 viewImage : Song -> ReadDirection -> Model -> String -> Int -> File -> Html msg
 viewImage song readDirection model readOnlyId index file =
   let
@@ -177,7 +179,8 @@ viewImage song readDirection model readOnlyId index file =
                   ++ String.fromInt numOfPages
               ]
           ]
-    , htmlIf (model.showHeading && index == 0) <|
+    , htmlIf (model.showHeading && index == 0)
+    <|
         div
           [ css [ Css.height headerHeight, text_center ] ]
           (if model.showHeading && index == 0
@@ -456,7 +459,8 @@ viewSong readDirection model readOnlyId song =
             divCenter [ text "Does not support more than one PDF per song" ]
           _ ->
             divCenter [ text "No files" ]
-        else divImages <|
+        else divImages
+        <|
           (if readDirection == ReadHorizontal
               then [ getSidebar model ]
               else []
@@ -509,7 +513,7 @@ view :
   , model : Model
   }
   -> View mainMsg
-view settings sharedModel {toContentMsg, model} =
+view settings sharedModel { toContentMsg, model } =
   case settings.songsResult of
     Ok gqlRes ->
       case gqlRes.data of

@@ -39,7 +39,7 @@ type alias Model =
   { songsResult : GraphQL.Response (List Song) }
 
 
-init : Shared.Model -> Route { songId : String } -> () -> (Model, Effect Msg)
+init : Shared.Model -> Route { songId : String } -> () -> ( Model, Effect Msg )
 init sharedModel route _ =
   ( { songsResult = Ok { data = Nothing, errors = Nothing } }
   , case sharedModel.readonlyId of
@@ -58,7 +58,7 @@ type Msg
   = OnSong (GraphQL.Response (List Song))
 
 
-update : Msg -> Model -> (Model, Effect Msg)
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
   case msg of
     OnSong songsResult ->
@@ -68,6 +68,8 @@ update msg model =
 
 
 -- VIEW
+
+
 viewSong : String -> Song -> Html msg
 viewSong _ song =
   let
@@ -83,7 +85,8 @@ viewSong _ song =
     []
     [ h2
         [ css [ text_3xl, mb_8 ] ]
-        [ text <|
+        [ text
+        <|
             (if song.isFavorite
                 then "⭐️ "
                 else ""

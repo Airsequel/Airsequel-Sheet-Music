@@ -45,7 +45,7 @@ type alias Model =
   }
 
 
-init : Shared.Model -> () -> (Model, Effect Msg)
+init : Shared.Model -> () -> ( Model, Effect Msg )
 init sharedModel () =
   ( { sharedModel = sharedModel
     , partialReadonlyId = Nothing
@@ -63,7 +63,7 @@ type Msg
   | SubmittedReadonlyId
 
 
-update : Msg -> Model -> (Model, Effect Msg)
+update : Msg -> Model -> ( Model, Effect Msg )
 update msg model =
   case msg of
     EnteredReadonlyId readonlyId ->
@@ -118,6 +118,8 @@ update msg model =
 
 
 -- VIEW
+
+
 buttonStyle : List Css.Style -> Attribute msg
 buttonStyle add =
   css <|
@@ -638,35 +640,36 @@ view sharedModel model =
                               [ text errorTxt ]
                         in
                         (case sharedModel.songsResult of
-                          Ok gqlRes ->
-                            case gqlRes.data of
-                              Just songsData ->
-                                [ viewSongsTable
-                                    model.searchStrMb
-                                    songsData.root
-                                ]
-                              Nothing ->
-                                let
-                                  readonlyIdEmpty =
-                                    (sharedModel.readonlyId
-                                      == Nothing
-                                    )
-                                    || (sharedModel.readonlyId
-                                      == Just ""
-                                    )
-                                in
-                                if readonlyIdEmpty
-                                  then viewGettingStarted
-                                    sharedModel
-                                    model
-                                  else ifNothing
-                                    gqlRes.errors
-                                    [ div
-                                        [ css [ text_center ] ]
-                                        [ text "Loading …" ]
-                                    ]
-                          Err httpError ->
-                            [ viewHttpError httpError ])
+                            Ok gqlRes ->
+                              case gqlRes.data of
+                                Just songsData ->
+                                  [ viewSongsTable
+                                      model.searchStrMb
+                                      songsData.root
+                                  ]
+                                Nothing ->
+                                  let
+                                    readonlyIdEmpty =
+                                      (sharedModel.readonlyId
+                                        == Nothing
+                                      )
+                                      || (sharedModel.readonlyId
+                                        == Just ""
+                                      )
+                                  in
+                                  if readonlyIdEmpty
+                                    then viewGettingStarted
+                                      sharedModel
+                                      model
+                                    else ifNothing
+                                      gqlRes.errors
+                                      [ div
+                                          [ css [ text_center ] ]
+                                          [ text "Loading …" ]
+                                      ]
+                            Err httpError ->
+                              [ viewHttpError httpError ]
+                        )
                         ++ [ div
                             []
                             (model.errors |> List.map errorPara)

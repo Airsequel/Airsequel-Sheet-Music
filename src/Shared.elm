@@ -17,6 +17,7 @@ module Shared exposing
 @docs getSongWithFiles
 
 -}
+
 import Effect exposing (Effect)
 import GraphQL
 import Json.Decode
@@ -115,7 +116,7 @@ type alias Model =
   Shared.Model.Model
 
 
-init : Result Json.Decode.Error Flags -> Route () -> (Model, Effect Msg)
+init : Result Json.Decode.Error Flags -> Route () -> ( Model, Effect Msg )
 init flagsResult _ =
   let
     emptyModel =
@@ -144,7 +145,7 @@ type alias Msg =
   Shared.Msg.Msg
 
 
-update : Route () -> Msg -> Model -> (Model, Effect Msg)
+update : Route () -> Msg -> Model -> ( Model, Effect Msg )
 update _ msg model =
   case msg of
     Shared.Msg.SubmittedReadonlyId readonlyId ->
@@ -164,6 +165,8 @@ update _ msg model =
 
 
 -- SUBSCRIPTIONS
+
+
 subscriptions : Route () -> Model -> Sub Msg
 subscriptions _ _ =
   Sub.none

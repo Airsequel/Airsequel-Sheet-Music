@@ -1,4 +1,4 @@
-module Pages.Home_ exposing (Model, Msg, page)
+module Pages.Home_ exposing (Filters, Model, Msg, page)
 
 import Css
 import Css.Global
@@ -9,12 +9,14 @@ import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (onClick, onInput, onSubmit)
 import Page exposing (Page)
 import Route exposing (Route)
+import Set
 import Shared
 import Shared.Model exposing (ColorPref(..))
 import Shared.Msg exposing (Msg)
 import Svg.Styled as Svg
 import Svg.Styled.Attributes exposing (d, fill, viewBox)
 import Tailwind.Breakpoints exposing (..)
+import Tailwind.Theme
 import Tailwind.Utilities exposing (..)
 import Theme exposing (Theme)
 import Types.Song exposing (Song)
@@ -42,7 +44,32 @@ type alias Model =
   { sharedModel : Shared.Model
   , partialReadonlyId : Maybe String
   , searchStrMb : Maybe String
+  , filters : Filters
   , errors : List String
+  }
+
+
+type alias Filters =
+  { interpreter : Maybe String
+  , instrumentation : Maybe String
+  , key : Maybe String
+  , tempo : Maybe String
+  }
+
+
+type FilterField
+  = Interpreter
+  | Instrumentation
+  | Key
+  | Tempo
+
+
+emptyFilters : Filters
+emptyFilters =
+  { interpreter = Nothing
+  , instrumentation = Nothing
+  , key = Nothing
+  , tempo = Nothing
   }
 
 
@@ -51,6 +78,7 @@ init sharedModel () =
   ( { sharedModel = sharedModel
     , partialReadonlyId = Nothing
     , searchStrMb = Nothing
+    , filters = emptyFilters
     , errors = []
     }
   , Effect.none
@@ -63,6 +91,8 @@ type Msg
   | EnteredSearch String
   | SubmittedReadonlyId
   | SelectedColorPref ColorPref
+  | SelectedFilter FilterField String
+  | ResetFilters
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -79,6 +109,34 @@ update msg model =
     SelectedColorPref pref ->
       ( model
       , Effect.sendSharedMsg (Shared.Msg.SetColorPref pref)
+      )
+    SelectedFilter field val ->
+      let
+        valMb =
+          if val == allFilterMarker
+            then Nothing
+            else Just val
+
+        f =
+          model.filters
+
+        newFilters =
+          case field of
+            Interpreter ->
+              { f | interpreter = valMb }
+            Instrumentation ->
+              { f | instrumentation = valMb }
+            Key ->
+              { f | key = valMb }
+            Tempo ->
+              { f | tempo = valMb }
+      in
+      ( { model | filters = newFilters }
+      , Effect.none
+      )
+    ResetFilters ->
+      ( { model | filters = emptyFilters }
+      , Effect.none
       )
     SubmittedReadonlyId ->
       let
@@ -121,6 +179,70 @@ update msg model =
               , SendSharedMsg <|
                   Shared.Msg.SubmittedReadonlyId val
               )
+
+
+-- FILTERS
+
+
+allFilterMarker : String
+allFilterMarker =
+  "__filter_all__"
+
+
+filterBySearchStr : Maybe String -> Song -> Bool
+filterBySearchStr searchStrMb song =
+  case searchStrMb of
+    Just searchStr ->
+      ((song.interpreter |> Maybe.withDefault "")
+        ++ " "
+        ++ song.name
+        ++ " "
+        ++ (song.instrumentation |> Maybe.withDefault "")
+        ++ " "
+        ++ (song.key |> Maybe.withDefault "")
+      )
+        |> String.toLower
+        |> String.contains (String.toLower searchStr)
+    Nothing ->
+      True
+
+
+filtersActive : Filters -> Bool
+filtersActive f =
+  f.interpreter
+  /= Nothing
+  || f.instrumentation
+  /= Nothing
+  || f.key
+  /= Nothing
+  || f.tempo
+  /= Nothing
+
+
+matchesFilters : Filters -> Song -> Bool
+matchesFilters filters song =
+  let
+    match filterMb val =
+      case filterMb of
+        Nothing ->
+          True
+        Just v ->
+          val == Just v
+  in
+  match filters.interpreter song.interpreter
+  && match filters.instrumentation song.instrumentation
+  && match filters.key song.key
+  && match filters.tempo song.tempo
+
+
+uniqueValues : (Song -> Maybe String) -> List Song -> List String
+uniqueValues getter songs =
+  songs
+    |> List.filterMap getter
+    |> List.filter (not << String.isEmpty << String.trim)
+    |> Set.fromList
+    |> Set.toList
+    |> List.sort
 
 
 -- VIEW
@@ -363,8 +485,8 @@ viewSong theme song =
     ]
 
 
-viewSongsTable : Theme -> Maybe String -> List Song -> Html Msg
-viewSongsTable theme searchStrMb songs =
+viewSongsTable : Theme -> Maybe String -> Filters -> List Song -> Html Msg
+viewSongsTable theme searchStrMb filters songs =
   let
     documentIcon styles =
       Svg.svg
@@ -412,25 +534,13 @@ viewSongsTable theme searchStrMb songs =
             ]
         ]
 
-    filterBySearchStr song =
-      case searchStrMb of
-        Just searchStr ->
-          ((song.interpreter |> Maybe.withDefault "")
-            ++ " "
-            ++ song.name
-            ++ " "
-            ++ (song.instrumentation |> Maybe.withDefault "")
-            ++ " "
-            ++ (song.key |> Maybe.withDefault "")
-          )
-            |> String.toLower
-            |> String.contains (String.toLower searchStr)
-        Nothing ->
-          True
+    matchesAll song =
+      filterBySearchStr searchStrMb song
+      && matchesFilters filters song
 
     favoriteSongs =
       songs
-        |> List.filter filterBySearchStr
+        |> List.filter matchesAll
         |> List.filter .isFavorite
         |> List.map (viewSong theme)
   in
@@ -446,7 +556,7 @@ viewSongsTable theme searchStrMb songs =
               ]
           )
           ++ (songs
-            |> List.filter filterBySearchStr
+            |> List.filter matchesAll
             |> List.filter (not << .isFavorite)
             |> List.map (viewSong theme)
           )
@@ -481,54 +591,156 @@ formatGqlErrors theme gqlErrors =
     ]
 
 
+viewFilterSelect :
+  Theme
+  -> List Song
+  -> String
+  -> (Song -> Maybe String)
+  -> FilterField
+  -> Maybe String
+  -> Html Msg
+viewFilterSelect theme songs labelText getter field current =
+  let
+    values =
+      uniqueValues getter songs
+
+    optionEl v =
+      option
+        [ Html.Styled.Attributes.value v ]
+        [ text v ]
+  in
+  Html.Styled.select
+    [ onInput (SelectedFilter field)
+    , Html.Styled.Attributes.value
+        (Maybe.withDefault allFilterMarker current)
+    , css
+        [ border
+        , border_solid
+        , border_color theme.border
+        , rounded
+        , px_2
+        , py_1
+        , bg_color theme.bgInput
+        , text_color theme.textPrimary
+        ]
+    ]
+    (option
+        [ Html.Styled.Attributes.value allFilterMarker ]
+        [ text ("All " ++ labelText) ]
+        :: List.map optionEl values
+    )
+
+
 viewToolbar :
   Theme
+  -> Model
   -> GraphQL.Response (List Song)
   -> List (Html Msg)
-viewToolbar theme songsResult =
+viewToolbar theme model songsResult =
   case songsResult of
     Ok gqlRes ->
       [ case gqlRes.data of
         Just songsData ->
+          let
+            visibleSongs =
+              songsData.root
+                |> List.filter (filterBySearchStr model.searchStrMb)
+                |> List.filter (matchesFilters model.filters)
+          in
           div
-            [ css
-                [ flex
-                , flex_col
-                , sm [ flex_row ]
-                , justify_between
-                , mt_4
-                , gap_4
-                ]
-            ]
+            [ css [ flex, flex_col, mt_4, gap_4 ] ]
             [ div
-                []
-                [ input
-                    [ type_ "text"
-                    , css
-                        [ border
-                        , border_solid
-                        , border_color theme.border
-                        , rounded
-                        , px_4
-                        , py_2
-                        , w_full
-                        , bg_color theme.bgInput
-                        , text_color theme.textPrimary
-                        , sm [ w_80 ]
-                        ]
-                    , placeholder "Search"
-                    , onInput EnteredSearch
+                [ css
+                    [ flex
+                    , flex_col
+                    , sm [ flex_row ]
+                    , justify_between
+                    , gap_4
                     ]
-                    []
                 ]
-            , span
-                [ css [ font_semibold ] ]
-                [ text "Number of songs: "
-                , text
-                    (songsData.root
-                      |> List.length
-                      |> String.fromInt
-                    )
+                [ div
+                    []
+                    [ input
+                        [ type_ "text"
+                        , css
+                            [ border
+                            , border_solid
+                            , border_color theme.border
+                            , rounded
+                            , px_4
+                            , py_2
+                            , w_full
+                            , bg_color theme.bgInput
+                            , text_color theme.textPrimary
+                            , sm [ w_80 ]
+                            ]
+                        , placeholder "Search"
+                        , onInput EnteredSearch
+                        ]
+                        []
+                    ]
+                , span
+                    [ css [ font_semibold ] ]
+                    [ text "Number of songs: "
+                    , text
+                        (visibleSongs
+                          |> List.length
+                          |> String.fromInt
+                        )
+                    , if List.length visibleSongs
+                      == List.length songsData.root
+                      then text ""
+                      else text
+                        (" / "
+                          ++ String.fromInt
+                            (List.length songsData.root)
+                        )
+                    ]
+                ]
+            , div
+                [ css [ flex, flex_wrap, gap_2 ] ]
+                [ viewFilterSelect
+                    theme
+                    songsData.root
+                    "Interpreters"
+                    .interpreter
+                    Interpreter
+                    model.filters.interpreter
+                , viewFilterSelect
+                    theme
+                    songsData.root
+                    "Instrumentations"
+                    .instrumentation
+                    Instrumentation
+                    model.filters.instrumentation
+                , viewFilterSelect
+                    theme
+                    songsData.root
+                    "Keys"
+                    .key
+                    Key
+                    model.filters.key
+                , viewFilterSelect
+                    theme
+                    songsData.root
+                    "Tempos"
+                    .tempo
+                    Tempo
+                    model.filters.tempo
+                , if filtersActive model.filters
+                  then button
+                    [ onClick ResetFilters
+                    , css
+                        [ bg_color Tailwind.Theme.transparent
+                        , border_0
+                        , p_0
+                        , cursor_pointer
+                        , underline
+                        , text_color theme.textLink
+                        ]
+                    ]
+                    [ text "Reset filters" ]
+                  else text ""
                 ]
             ]
         Nothing ->
@@ -667,7 +879,7 @@ view sharedModel model =
                         ]
                   , colorPrefControl theme darkMode sharedModel.colorPref
                   ]
-                  :: viewToolbar theme sharedModel.songsResult
+                  :: viewToolbar theme model sharedModel.songsResult
               )
           , div
               [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
@@ -726,6 +938,7 @@ view sharedModel model =
                                   [ viewSongsTable
                                       theme
                                       model.searchStrMb
+                                      model.filters
                                       songsData.root
                                   ]
                                 Nothing ->

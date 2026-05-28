@@ -29,5 +29,4 @@ dist: node_modules elm.json elm-land.json $(shell find src) $(shell find static)
 
 .PHONY: deploy
 deploy: dist
-	@echo "Open https://app.netlify.com/sites/airsequel-sheet-music/deploys"
-	@echo "and drag & drop the ./dist directory."
+	netlify deploy --prod --dir=dist --site=airsequel-sheet-music

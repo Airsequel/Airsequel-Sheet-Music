@@ -13,6 +13,7 @@ type alias Song =
   , tempo : Maybe String
   , key : Maybe String
   , interpreter : Maybe String
+  , description : Maybe String
   , numberOfFiles : Int
   , filetypes : Maybe String
   , files : List File
@@ -45,6 +46,7 @@ songDecoder withFiles =
     |> JDP.required "tempo" (JD.maybe JD.string)
     |> JDP.required "key" (JD.maybe JD.string)
     |> JDP.required "interpreter" (JD.maybe JD.string)
+    |> JDP.optional "description" (JD.nullable JD.string) Nothing
     |> JDP.custom
         (JD.field "numberOfFiles" JD.string
           |> JD.map

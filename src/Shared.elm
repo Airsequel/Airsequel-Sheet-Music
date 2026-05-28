@@ -103,6 +103,7 @@ getSongWithFiles readonlyId songId msg =
                     tempo
                     key
                     interpreter
+                    description
                     numberOfFiles
                     filetypes
                     files

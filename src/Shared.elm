@@ -61,9 +61,12 @@ getSongs readonlyId =
                         rowid
                         name
                         instrumentation
+                        style
                         tempo
                         key
                         interpreter
+                        composer
+                        arranger
                         numberOfFiles
                         filetypes
                         is_favorite
@@ -100,9 +103,12 @@ getSongWithFiles readonlyId songId msg =
                     rowid
                     name
                     instrumentation
+                    style
                     tempo
                     key
                     interpreter
+                    composer
+                    arranger
                     description
                     numberOfFiles
                     filetypes

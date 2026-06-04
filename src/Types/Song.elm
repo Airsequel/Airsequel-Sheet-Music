@@ -10,9 +10,12 @@ type alias Song =
   { rowid : Int
   , name : String
   , instrumentation : Maybe String
+  , style : Maybe String
   , tempo : Maybe String
   , key : Maybe String
   , interpreter : Maybe String
+  , composer : Maybe String
+  , arranger : Maybe String
   , description : Maybe String
   , numberOfFiles : Int
   , filetypes : Maybe String
@@ -43,9 +46,12 @@ songDecoder withFiles =
     |> JDP.required "rowid" JD.int
     |> JDP.required "name" JD.string
     |> JDP.required "instrumentation" (JD.maybe JD.string)
+    |> JDP.optional "style" (JD.maybe JD.string) Nothing
     |> JDP.required "tempo" (JD.maybe JD.string)
     |> JDP.required "key" (JD.maybe JD.string)
     |> JDP.required "interpreter" (JD.maybe JD.string)
+    |> JDP.optional "composer" (JD.maybe JD.string) Nothing
+    |> JDP.optional "arranger" (JD.maybe JD.string) Nothing
     |> JDP.optional "description" (JD.nullable JD.string) Nothing
     |> JDP.custom
         (JD.field "numberOfFiles" JD.string

@@ -119,10 +119,28 @@ viewSong theme _ song =
                     [ text <| Maybe.withDefault "-" song.interpreter ]
                 ]
             , listItem
+                [ keySpan "Composer:"
+                , strong
+                    []
+                    [ text <| Maybe.withDefault "-" song.composer ]
+                ]
+            , listItem
+                [ keySpan "Arranger:"
+                , strong
+                    []
+                    [ text <| Maybe.withDefault "-" song.arranger ]
+                ]
+            , listItem
                 [ keySpan "Instrumentation:"
                 , strong
                     []
                     [ text <| Maybe.withDefault "-" song.instrumentation ]
+                ]
+            , listItem
+                [ keySpan "Style:"
+                , strong
+                    []
+                    [ text <| Maybe.withDefault "-" song.style ]
                 ]
             , listItem
                 [ keySpan "Tempo:"

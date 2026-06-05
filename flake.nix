@@ -20,6 +20,7 @@
           buildInputs = with pkgs; [
             bash
             coreutils
+            elmPackages.elm
             gnumake
             netlify-cli
             nodejs_24

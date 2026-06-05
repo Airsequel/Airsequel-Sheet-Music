@@ -4,15 +4,18 @@ import Css
 import Css.Global
 import Effect exposing (Effect(..))
 import GraphQL
+import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (onClick, onInput, onSubmit)
+import MultiSelect
 import Page exposing (Page)
 import Route exposing (Route)
 import Set
 import Shared
 import Shared.Model exposing (ColorPref(..))
 import Shared.Msg exposing (Msg)
+import SmartSelect.Settings as SmartSettings
 import Svg.Styled as Svg
 import Svg.Styled.Attributes exposing (d, fill, viewBox)
 import Tailwind.Breakpoints exposing (..)
@@ -34,7 +37,7 @@ page sharedModel _ =
   Page.new
     { init = init sharedModel
     , update = update
-    , subscriptions = \_ -> Sub.none
+    , subscriptions = subscriptions
     , view = view sharedModel
     }
 
@@ -45,13 +48,14 @@ type alias Model =
   , partialReadonlyId : Maybe String
   , searchStrMb : Maybe String
   , filters : Filters
+  , instrumentationSelect : MultiSelect.SmartSelect Msg String
   , errors : List String
   }
 
 
 type alias Filters =
   { interpreter : Maybe String
-  , instrumentation : Maybe String
+  , instrumentation : List String
   , key : Maybe String
   , tempo : Maybe String
   }
@@ -59,7 +63,6 @@ type alias Filters =
 
 type FilterField
   = Interpreter
-  | Instrumentation
   | Key
   | Tempo
 
@@ -67,10 +70,19 @@ type FilterField
 emptyFilters : Filters
 emptyFilters =
   { interpreter = Nothing
-  , instrumentation = Nothing
+  , instrumentation = []
   , key = Nothing
   , tempo = Nothing
   }
+
+
+initInstrumentationSelect : MultiSelect.SmartSelect Msg String
+initInstrumentationSelect =
+  MultiSelect.init
+    { selectionMsg = InstrumentationSelection
+    , internalMsg = InstrumentationSelectUpdate
+    , idPrefix = "instrumentation-select"
+    }
 
 
 init : Shared.Model -> () -> ( Model, Effect Msg )
@@ -79,6 +91,7 @@ init sharedModel () =
     , partialReadonlyId = Nothing
     , searchStrMb = Nothing
     , filters = emptyFilters
+    , instrumentationSelect = initInstrumentationSelect
     , errors = []
     }
   , Effect.none
@@ -92,6 +105,8 @@ type Msg
   | SubmittedReadonlyId
   | SelectedColorPref ColorPref
   | SelectedFilter FilterField String
+  | InstrumentationSelectUpdate (MultiSelect.Msg String)
+  | InstrumentationSelection ( List String, MultiSelect.Msg String )
   | ResetFilters
 
 
@@ -124,8 +139,6 @@ update msg model =
           case field of
             Interpreter ->
               { f | interpreter = valMb }
-            Instrumentation ->
-              { f | instrumentation = valMb }
             Key ->
               { f | key = valMb }
             Tempo ->
@@ -133,6 +146,45 @@ update msg model =
       in
       ( { model | filters = newFilters }
       , Effect.none
+      )
+    InstrumentationSelectUpdate sMsg ->
+      let
+        ( newSelect, selectCmd ) =
+          MultiSelect.update sMsg model.instrumentationSelect
+      in
+      ( { model | instrumentationSelect = newSelect }
+      , Effect.sendCmd selectCmd
+      )
+    InstrumentationSelection ( selection, sMsg ) ->
+      let
+        ( newSelect, selectCmd ) =
+          MultiSelect.update sMsg model.instrumentationSelect
+
+        f =
+          model.filters
+
+        -- Preserve insertion order: keep previously selected items in their
+        -- existing order, then append any newly added ones. The library's
+        -- selection list order is not insertion order, so we reconcile here.
+        selectionSet =
+          Set.fromList selection
+
+        kept =
+          f.instrumentation
+            |> List.filter (\i -> Set.member i selectionSet)
+
+        added =
+          selection
+            |> List.filter (\i -> not (List.member i f.instrumentation))
+
+        newInstrumentation =
+          kept ++ added
+      in
+      ( { model
+          | instrumentationSelect = newSelect
+          , filters = { f | instrumentation = newInstrumentation }
+        }
+      , Effect.sendCmd selectCmd
       )
     ResetFilters ->
       ( { model | filters = emptyFilters }
@@ -181,6 +233,14 @@ update msg model =
               )
 
 
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  MultiSelect.subscriptions model.instrumentationSelect
+
+
 -- FILTERS
 
 
@@ -211,8 +271,7 @@ filtersActive : Filters -> Bool
 filtersActive f =
   f.interpreter
   /= Nothing
-  || f.instrumentation
-  /= Nothing
+  || not (List.isEmpty f.instrumentation)
   || f.key
   /= Nothing
   || f.tempo
@@ -228,11 +287,31 @@ matchesFilters filters song =
           True
         Just v ->
           val == Just v
+
+    matchInstrumentation =
+      let
+        songInstrSet =
+          songInstrumentations song |> Set.fromList
+      in
+      filters.instrumentation
+        |> List.all (\i -> Set.member i songInstrSet)
   in
   match filters.interpreter song.interpreter
-  && match filters.instrumentation song.instrumentation
+  && matchInstrumentation
   && match filters.key song.key
   && match filters.tempo song.tempo
+
+
+{-| Split a comma-separated instrumentation string into trimmed,
+non-empty parts.
+-}
+songInstrumentations : Song -> List String
+songInstrumentations song =
+  song.instrumentation
+    |> Maybe.withDefault ""
+    |> String.split ","
+    |> List.map String.trim
+    |> List.filter (not << String.isEmpty)
 
 
 uniqueValues : (Song -> Maybe String) -> List Song -> List String
@@ -240,6 +319,15 @@ uniqueValues getter songs =
   songs
     |> List.filterMap getter
     |> List.filter (not << String.isEmpty << String.trim)
+    |> Set.fromList
+    |> Set.toList
+    |> List.sort
+
+
+uniqueInstrumentations : List Song -> List String
+uniqueInstrumentations songs =
+  songs
+    |> List.concatMap songInstrumentations
     |> Set.fromList
     |> Set.toList
     |> List.sort
@@ -620,8 +708,13 @@ viewFilterSelect theme songs labelText getter field current =
         , rounded
         , px_2
         , py_1
-        , bg_color theme.bgInput
-        , text_color theme.textPrimary
+        , bg_color theme.bgInput -- Gray out the text while the "All …" placeholder is shown,
+        -- matching the instrumentation select's placeholder.
+        , text_color
+            (if current == Nothing
+                then theme.textPlaceholder
+                else theme.textPrimary
+            )
         ]
     ]
     (option
@@ -631,12 +724,113 @@ viewFilterSelect theme songs labelText getter field current =
     )
 
 
+{-| Render a selected instrumentation as a pill. The surrounding wrapper
+(added by the library) handles click-to-remove, so the whole pill is the
+remove affordance; the "×" is just a visual cue.
+-}
+viewSelectedInstrumentation : String -> Html.Html Msg
+viewSelectedInstrumentation instrumentation =
+  Html.Styled.toUnstyled <|
+    span
+      [ css
+          [ Css.displayFlex
+          , Css.alignItems Css.center
+          , Css.property "gap" "0.25rem"
+          , Css.padding2 (Css.rem 0.0625) (Css.rem 0.5)
+          , Css.backgroundColor (Css.hex "3490dc")
+          , Css.color (Css.hex "ffffff")
+          , Css.borderRadius (Css.px 9999)
+          , Css.fontSize (Css.rem 0.875)
+          , Css.lineHeight (Css.rem 1.25)
+          , Css.cursor Css.pointer
+          ]
+      ]
+      [ text instrumentation
+      , span [ css [ Css.fontSize (Css.rem 1) ] ] [ text "×" ]
+      ]
+
+
+{-| Smart-select settings, themed to match the app's light/dark mode.
+The component styles itself via elm-css using this theme record.
+-}
+instrumentationSelectSettings : Bool -> SmartSettings.Settings Msg
+instrumentationSelectSettings darkMode =
+  let
+    base =
+      SmartSettings.defaultSettings
+
+    theme =
+      base.theme
+
+    color =
+      theme.color
+
+    ( textColor, bgColor, ( borderColor, hoverColor ) ) =
+      if darkMode
+        then
+          ( { primary = Css.hex "f5f5f5"
+            , secondary = Css.hex "a3a3a3"
+            , disabled = Css.hex "737373"
+            }
+          , { input = Css.hex "404040"
+            , optionsContainer = Css.hex "262626"
+            }
+          , ( Css.hex "525252", Css.rgba 255 255 255 0.06 )
+          )
+        else
+          ( { primary = Css.hex "1a202c"
+            , secondary = Css.hex "4a5568"
+            , disabled = Css.hex "a0aec0"
+            }
+          , { input = Css.hex "ffffff"
+            , optionsContainer = Css.hex "ffffff"
+            }
+          , ( Css.hex "9ca3af", Css.rgba 0 0 0 0.04 )
+          )
+  in
+  { base
+    | placeholder = "All Instrumentations"
+    , noResultsForMsg = \searchText -> "No results found for: " ++ searchText
+    , noOptionsMsg = "No instrumentations available"
+    , theme = { theme
+        | color = { color
+            | text = textColor
+            , background = bgColor
+            , border = borderColor
+            , action = { hover = hoverColor }
+          }
+      }
+  }
+
+
+viewInstrumentationFilter :
+  Bool
+  -> List Song
+  -> MultiSelect.SmartSelect Msg String
+  -> List String
+  -> Html Msg
+viewInstrumentationFilter darkMode songs select selected =
+  div
+    [ css [ Css.minWidth (Css.rem 14) ] ]
+    [ Html.Styled.fromUnstyled <|
+        MultiSelect.view
+          { selected = selected
+          , options = uniqueInstrumentations songs
+          , optionLabelFn = identity
+          , viewSelectedOptionFn = viewSelectedInstrumentation
+          , settings = instrumentationSelectSettings darkMode
+          }
+          select
+    ]
+
+
 viewToolbar :
   Theme
+  -> Bool
   -> Model
   -> GraphQL.Response (List Song)
   -> List (Html Msg)
-viewToolbar theme model songsResult =
+viewToolbar theme darkMode model songsResult =
   case songsResult of
     Ok gqlRes ->
       [ case gqlRes.data of
@@ -706,12 +900,10 @@ viewToolbar theme model songsResult =
                     .interpreter
                     Interpreter
                     model.filters.interpreter
-                , viewFilterSelect
-                    theme
+                , viewInstrumentationFilter
+                    darkMode
                     songsData.root
-                    "Instrumentations"
-                    .instrumentation
-                    Instrumentation
+                    model.instrumentationSelect
                     model.filters.instrumentation
                 , viewFilterSelect
                     theme
@@ -879,7 +1071,7 @@ view sharedModel model =
                         ]
                   , colorPrefControl theme darkMode sharedModel.colorPref
                   ]
-                  :: viewToolbar theme model sharedModel.songsResult
+                  :: viewToolbar theme darkMode model sharedModel.songsResult
               )
           , div
               [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]

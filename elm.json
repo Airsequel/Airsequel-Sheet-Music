@@ -16,14 +16,20 @@
             "elm/url": "1.0.0",
             "elm-explorations/markdown": "1.0.0",
             "gribouille/elm-graphql": "2.0.2",
-            "matheus23/elm-default-tailwind-modules": "4.0.0",
-            "rtfeldman/elm-css": "17.1.1"
+            "matheus23/elm-default-tailwind-modules": "4.0.1",
+            "mercurymedia/elm-smart-select": "8.0.0",
+            "rtfeldman/elm-css": "18.0.0"
         },
         "indirect": {
+            "avh4/elm-color": "1.0.0",
+            "damienklinnert/elm-spinner": "3.0.2",
             "elm/bytes": "1.0.8",
             "elm/file": "1.0.5",
+            "elm/svg": "1.0.1",
             "elm/time": "1.0.0",
             "elm/virtual-dom": "1.0.3",
+            "jinjor/elm-debounce": "3.0.0",
+            "krisajenkins/remotedata": "6.1.0",
             "matheus23/elm-tailwind-modules-base": "1.0.0",
             "robinheghan/murmur3": "1.0.0",
             "rtfeldman/elm-hex": "1.0.0"

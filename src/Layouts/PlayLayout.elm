@@ -14,6 +14,7 @@ import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (onClick)
+import Html.Styled.Keyed as Keyed
 import Layout exposing (Layout)
 import Maybe exposing (withDefault)
 import Route exposing (Route)
@@ -25,7 +26,7 @@ import Theme
 import Types.File exposing (File)
 import Types.ReadDirection exposing (ReadDirection(..))
 import Types.Song exposing (Song)
-import Utils exposing (host, viewHttpError)
+import Utils exposing (fileContentUrl, viewHttpError)
 import View exposing (View)
 
 
@@ -80,6 +81,7 @@ type alias Model =
   colorScheme : ColorScheme
   , showHeading : Bool
   , showPageNumbers : Bool
+  , playingAudio : Maybe Int
   }
 
 
@@ -92,6 +94,7 @@ init sharedModel _ =
           else Light
     , showHeading = True
     , showPageNumbers = True
+    , playingAudio = Nothing
     }
   , Effect.none
   )
@@ -103,6 +106,7 @@ type Msg
   SetColorScheme ColorScheme
   | SetShowHeading Bool
   | SetShowPageNumbers Bool
+  | ToggleAudio Int
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -122,6 +126,15 @@ update msg model =
       )
     SetShowPageNumbers val ->
       ( { model | showPageNumbers = val }
+      , Effect.none
+      )
+    ToggleAudio rowid ->
+      ( { model
+          | playingAudio =
+              if model.playingAudio == Just rowid
+                then Nothing
+                else Just rowid
+        }
       , Effect.none
       )
 
@@ -144,7 +157,9 @@ viewImage song readDirection model readOnlyId index file =
       Css.rem 5
 
     numOfPages =
-      List.length song.files
+      song.files
+        |> List.filter (Types.File.isAudio >> not)
+        |> List.length
   in
   div
     [ id "viewImage"
@@ -229,13 +244,7 @@ viewImage song readDirection model readOnlyId index file =
             )
         ]
         [ img
-            [ src
-                (host
-                  ++ "/readonly/"
-                  ++ readOnlyId
-                  ++ "/tables/files/columns/content/files/rowid/"
-                  ++ String.fromInt file.rowid
-                )
+            [ src (fileContentUrl readOnlyId file.rowid)
             , css <|
                 case readDirection of
                   ReadHorizontal ->
@@ -266,8 +275,8 @@ filesAreType filetype files =
         )
 
 
-getSidebar : Shared.Model -> Model -> Html Msg
-getSidebar sharedModel model =
+getSidebar : Shared.Model -> Model -> String -> List File -> Html Msg
+getSidebar sharedModel model readOnlyId audioFiles =
   let
     theme =
       Theme.fromDarkMode (Shared.Model.isDark sharedModel)
@@ -390,6 +399,57 @@ getSidebar sharedModel model =
 
     placeholder =
       [ div [ css [ h_3 ] ] [] ]
+
+    audioButton index file =
+      let
+        label =
+          case file.name of
+            Just name ->
+              if String.trim name == ""
+                then "Audio " ++ String.fromInt (index + 1)
+                else name
+            Nothing ->
+              "Audio " ++ String.fromInt (index + 1)
+      in
+      button
+        [ css [ btnCss, markSelectedFor (Just file.rowid) model.playingAudio ]
+        , title label
+        , onClick (ToggleAudio file.rowid)
+        ]
+        [ text
+            (if model.playingAudio == Just file.rowid
+                then "⏹️"
+                else "▶️"
+            )
+        ]
+
+    -- Hidden element that actually plays the selected track. Keyed on the
+    -- rowid so switching tracks remounts it (restarting playback); clearing
+    -- playingAudio unmounts it and stops playback.
+    audioPlayer rowid =
+      Keyed.node
+        "div"
+        [ css [ Css.display Css.none ] ]
+        [ ( String.fromInt rowid
+        , audio
+            [ src (fileContentUrl readOnlyId rowid)
+            , autoplay True
+            ]
+            []
+        )
+        ]
+
+    audioControls =
+      case audioFiles of
+        [] ->
+          []
+        _ ->
+          placeholder
+          ++ List.indexedMap audioButton audioFiles
+          ++ [ model.playingAudio
+            |> Maybe.map audioPlayer
+            |> Maybe.withDefault (text "")
+          ]
   in
   div
     [ css
@@ -407,12 +467,17 @@ getSidebar sharedModel model =
       ++ placeholder-- ++ alignmentButtons
       -- ++ placeholder
       ++ colorSchemeButtons
+      ++ audioControls
     )
 
 
 viewSong : Shared.Model -> ReadDirection -> Model -> String -> Song -> Html Msg
 viewSong sharedModel readDirection model readOnlyId song =
   let
+    sheetFiles : List File
+    sheetFiles =
+      List.filter (Types.File.isAudio >> not) song.files
+
     divImages : List (Html Msg) -> Html Msg
     divImages content =
       div
@@ -444,21 +509,15 @@ viewSong sharedModel readDirection model readOnlyId song =
         [ css [ text_center, font_sans, pt_8 ] ]
         content
   in
-  if List.isEmpty song.files
+  if List.isEmpty sheetFiles
     then divCenter [ text "No files" ]
     else
-      if song.files |> filesAreType "pdf"
-        then case song.files of
+      if sheetFiles |> filesAreType "pdf"
+        then case sheetFiles of
           [file] ->
             divImages <|
               [ iframe
-                  [ src
-                      (host
-                        ++ "/readonly/"
-                        ++ readOnlyId
-                        ++ "/tables/files/columns/content/files/rowid/"
-                        ++ String.fromInt file.rowid
-                      )
+                  [ src (fileContentUrl readOnlyId file.rowid)
                   , css [ w_full, h_full, border_none ]
                   ]
                   []
@@ -470,10 +529,15 @@ viewSong sharedModel readDirection model readOnlyId song =
         else divImages
         <|
           (if readDirection == ReadHorizontal
-              then [ getSidebar sharedModel model ]
+              then [ getSidebar
+                  sharedModel
+                  model
+                  readOnlyId
+                  (List.filter Types.File.isAudio song.files)
+              ]
               else []
           )
-          ++ (song.files
+          ++ (sheetFiles
             |> List.indexedMap
                 (viewImage
                     song

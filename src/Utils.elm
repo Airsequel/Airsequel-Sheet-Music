@@ -1,4 +1,10 @@
-module Utils exposing (addStarIf, arrowIconVert, host, viewHttpError)
+module Utils exposing
+  ( addStarIf
+  , arrowIconVert
+  , fileContentUrl
+  , host
+  , viewHttpError
+  )
 
 import Css
 import Html.Styled exposing (..)
@@ -13,6 +19,17 @@ import Tailwind.Utilities exposing (..)
 host : String
 host =
   "https://www.airsequel.com"
+
+
+{-| URL of a file's content (blob) in Airsequel's file storage.
+-}
+fileContentUrl : String -> Int -> String
+fileContentUrl readOnlyId rowid =
+  host
+  ++ "/readonly/"
+  ++ readOnlyId
+  ++ "/tables/files/columns/content/files/rowid/"
+  ++ String.fromInt rowid
 
 
 viewHttpError : Http.Error -> Html msg

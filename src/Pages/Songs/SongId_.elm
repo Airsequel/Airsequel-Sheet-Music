@@ -15,8 +15,9 @@ import Shared.Model
 import Tailwind.Breakpoints exposing (md)
 import Tailwind.Utilities exposing (..)
 import Theme exposing (Theme)
+import Types.File exposing (File)
 import Types.Song exposing (Song)
-import Utils exposing (arrowIconVert, viewHttpError)
+import Utils exposing (arrowIconVert, fileContentUrl, viewHttpError)
 import View exposing (View)
 
 
@@ -75,7 +76,7 @@ update msg model =
 
 
 viewSong : Theme -> String -> Song -> Html msg
-viewSong theme _ song =
+viewSong theme readOnlyId song =
   let
     keySpan value =
       span
@@ -84,6 +85,12 @@ viewSong theme _ song =
 
     listItem =
       li [ css [ flex ] ]
+
+    audioFiles =
+      List.filter Types.File.isAudio song.files
+
+    sheetFiles =
+      List.filter (Types.File.isAudio >> not) song.files
 
     hasDescription =
       case song.description of
@@ -158,10 +165,10 @@ viewSong theme _ song =
                 [ keySpan "Number of Pages: "
                 , strong
                     []
-                    [ text <| String.fromInt <| List.length song.files ]
+                    [ text <| String.fromInt <| List.length sheetFiles ]
                 ]
             ]
-        , if List.isEmpty song.files
+        , if List.isEmpty sheetFiles
           then text ""
           else
             let
@@ -204,9 +211,50 @@ viewSong theme _ song =
                   , span [] [ text "Vertical View" ]
                   ]
               ]
+        , viewAudio readOnlyId audioFiles
         ]
     , viewDescription theme song.description
     ]
+
+
+viewAudio : String -> List File -> Html msg
+viewAudio readOnlyId audioFiles =
+  if List.isEmpty audioFiles
+    then text ""
+    else
+      let
+        viewTrack index file =
+          let
+            label =
+              case file.name of
+                Just name ->
+                  if String.trim name == ""
+                    then "Audio " ++ String.fromInt (index + 1)
+                    else name
+                Nothing ->
+                  "Audio " ++ String.fromInt (index + 1)
+          in
+          li
+            [ css [ mb_4 ] ]
+            [ p
+                [ css [ mb_1, font_medium ] ]
+                [ text label ]
+            , audio
+                [ controls True
+                , preload "none"
+                , src (fileContentUrl readOnlyId file.rowid)
+                , css [ w_full ]
+                ]
+                []
+            ]
+      in
+      div
+        [ css [ mt_8 ] ]
+        [ h3
+            [ css [ text_xl, mb_4 ] ]
+            [ text "Audio" ]
+        , ul [] (List.indexedMap viewTrack audioFiles)
+        ]
 
 
 viewDescription : Theme -> Maybe String -> Html msg

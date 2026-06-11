@@ -1,4 +1,10 @@
-module Types.Song exposing (Song, songDecoder, songsDecoder)
+module Types.Song exposing
+  ( Song
+  , SongsPage
+  , songDecoder
+  , songsDecoder
+  , songsPageDecoder
+  )
 
 import Html exposing (..)
 import Json.Decode as JD exposing (Decoder)
@@ -68,3 +74,27 @@ songDecoder withFiles =
 songsDecoder : Bool -> Decoder (List Song)
 songsDecoder withFiles =
   JD.list (songDecoder withFiles)
+
+
+{-| One page of the `songs_paginated_json` view.
+Every row carries the window-function column `total_count`,
+so the overall number of songs is read from the first row.
+-}
+type alias SongsPage =
+  { songs : List Song
+  , totalCount : Int
+  }
+
+
+songsPageDecoder : Decoder SongsPage
+songsPageDecoder =
+  JD.map2
+    SongsPage
+    (JD.list (songDecoder False))
+    (JD.list (JD.field "total_count" JD.string)
+      |> JD.map
+          (List.head
+            >> Maybe.andThen String.toInt
+            >> Maybe.withDefault 0
+          )
+    )

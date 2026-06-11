@@ -1,4 +1,4 @@
-module Pages.Home_ exposing (Filters, Model, Msg, page)
+module Pages.Home_ exposing (Model, Msg, page)
 
 import Css
 import Css.Global
@@ -13,7 +13,13 @@ import Page exposing (Page)
 import Route exposing (Route)
 import Set
 import Shared
-import Shared.Model exposing (ColorPref(..))
+import Shared.Model
+  exposing
+    ( ColorPref(..)
+    , Filters
+    , emptyFilters
+    , filtersActive
+    )
 import Shared.Msg exposing (Msg)
 import SmartSelect.Settings as SmartSettings
 import Svg.Styled as Svg
@@ -46,18 +52,9 @@ page sharedModel _ =
 type alias Model =
   { sharedModel : Shared.Model
   , partialReadonlyId : Maybe String
-  , searchStrMb : Maybe String
   , filters : Filters
   , instrumentationSelect : MultiSelect.SmartSelect Msg String
   , errors : List String
-  }
-
-
-type alias Filters =
-  { interpreter : Maybe String
-  , instrumentation : List String
-  , key : Maybe String
-  , tempo : Maybe String
   }
 
 
@@ -65,15 +62,6 @@ type FilterField
   = Interpreter
   | Key
   | Tempo
-
-
-emptyFilters : Filters
-emptyFilters =
-  { interpreter = Nothing
-  , instrumentation = []
-  , key = Nothing
-  , tempo = Nothing
-  }
 
 
 initInstrumentationSelect : MultiSelect.SmartSelect Msg String
@@ -89,7 +77,6 @@ init : Shared.Model -> () -> ( Model, Effect Msg )
 init sharedModel () =
   ( { sharedModel = sharedModel
     , partialReadonlyId = Nothing
-    , searchStrMb = Nothing
     , filters = emptyFilters
     , instrumentationSelect = initInstrumentationSelect
     , errors = []
@@ -108,6 +95,7 @@ type Msg
   | InstrumentationSelectUpdate (MultiSelect.Msg String)
   | InstrumentationSelection ( List String, MultiSelect.Msg String )
   | ResetFilters
+  | SelectedPage Int
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -118,8 +106,8 @@ update msg model =
       , Effect.none
       )
     EnteredSearch searchStr ->
-      ( { model | searchStrMb = Just searchStr }
-      , Effect.none
+      ( model
+      , Effect.sendSharedMsg (Shared.Msg.EnteredSongsSearch searchStr)
       )
     SelectedColorPref pref ->
       ( model
@@ -145,7 +133,7 @@ update msg model =
               { f | tempo = valMb }
       in
       ( { model | filters = newFilters }
-      , Effect.none
+      , Effect.sendSharedMsg (Shared.Msg.SetSongsFilters newFilters)
       )
     InstrumentationSelectUpdate sMsg ->
       let
@@ -179,16 +167,26 @@ update msg model =
 
         newInstrumentation =
           kept ++ added
+
+        newFilters =
+          { f | instrumentation = newInstrumentation }
       in
       ( { model
           | instrumentationSelect = newSelect
-          , filters = { f | instrumentation = newInstrumentation }
+          , filters = newFilters
         }
-      , Effect.sendCmd selectCmd
+      , Effect.batch
+          [ Effect.sendCmd selectCmd
+          , Effect.sendSharedMsg (Shared.Msg.SetSongsFilters newFilters)
+          ]
       )
     ResetFilters ->
       ( { model | filters = emptyFilters }
-      , Effect.none
+      , Effect.sendSharedMsg (Shared.Msg.SetSongsFilters emptyFilters)
+      )
+    SelectedPage pageNumber ->
+      ( model
+      , Effect.sendSharedMsg (Shared.Msg.SelectedSongsPage pageNumber)
       )
     SubmittedReadonlyId ->
       let
@@ -247,59 +245,6 @@ subscriptions model =
 allFilterMarker : String
 allFilterMarker =
   "__filter_all__"
-
-
-filterBySearchStr : Maybe String -> Song -> Bool
-filterBySearchStr searchStrMb song =
-  case searchStrMb of
-    Just searchStr ->
-      ((song.interpreter |> Maybe.withDefault "")
-        ++ " "
-        ++ song.name
-        ++ " "
-        ++ (song.instrumentation |> Maybe.withDefault "")
-        ++ " "
-        ++ (song.key |> Maybe.withDefault "")
-      )
-        |> String.toLower
-        |> String.contains (String.toLower searchStr)
-    Nothing ->
-      True
-
-
-filtersActive : Filters -> Bool
-filtersActive f =
-  f.interpreter
-  /= Nothing
-  || not (List.isEmpty f.instrumentation)
-  || f.key
-  /= Nothing
-  || f.tempo
-  /= Nothing
-
-
-matchesFilters : Filters -> Song -> Bool
-matchesFilters filters song =
-  let
-    match filterMb val =
-      case filterMb of
-        Nothing ->
-          True
-        Just v ->
-          val == Just v
-
-    matchInstrumentation =
-      let
-        songInstrSet =
-          songInstrumentations song |> Set.fromList
-      in
-      filters.instrumentation
-        |> List.all (\i -> Set.member i songInstrSet)
-  in
-  match filters.interpreter song.interpreter
-  && matchInstrumentation
-  && match filters.key song.key
-  && match filters.tempo song.tempo
 
 
 {-| Split a comma-separated instrumentation string into trimmed,
@@ -573,8 +518,8 @@ viewSong theme song =
     ]
 
 
-viewSongsTable : Theme -> Maybe String -> Filters -> List Song -> Html Msg
-viewSongsTable theme searchStrMb filters songs =
+viewSongsTable : Theme -> List Song -> Html Msg
+viewSongsTable theme songs =
   let
     documentIcon styles =
       Svg.svg
@@ -622,34 +567,125 @@ viewSongsTable theme searchStrMb filters songs =
             ]
         ]
 
-    matchesAll song =
-      filterBySearchStr searchStrMb song
-      && matchesFilters filters song
-
     favoriteSongs =
       songs
-        |> List.filter matchesAll
         |> List.filter .isFavorite
         |> List.map (viewSong theme)
+
+    otherSongs =
+      songs
+        |> List.filter (not << .isFavorite)
+        |> List.map (viewSong theme)
+
+    separator =
+      if List.isEmpty favoriteSongs || List.isEmpty otherSongs
+        then []
+        else [ tr [ css [ h_8, border_b, border_color theme.border ] ] []
+        , tr [ css [ h_8, border_t, border_color theme.border ] ] []
+        ]
   in
   Html.Styled.table
     [ css [ w_full, bg_color theme.bgPanel ] ]
     [ tableHead
-    , tbody [] <|
-        (favoriteSongs
-          ++ (if List.isEmpty favoriteSongs
-              then []
-              else [ tr [ css [ h_8, border_b, border_color theme.border ] ] []
-              , tr [ css [ h_8, border_t, border_color theme.border ] ] []
-              ]
-          )
-          ++ (songs
-            |> List.filter matchesAll
-            |> List.filter (not << .isFavorite)
-            |> List.map (viewSong theme)
-          )
-        )
+    , tbody [] (favoriteSongs ++ separator ++ otherSongs)
     ]
+
+
+{-| Page controls for the server-side pagination.
+Without a search or filters, the total number of pages is derived from
+the `total_count` column of the `songs_paginated_json` view and
+numbered page buttons are shown. While searching or filtering,
+`total_count` is meaningless (the window function ignores the filter),
+so only prev/next controls are shown, based on whether an extra row
+could be fetched.
+-}
+viewPagination : Theme -> Shared.Model -> Int -> Html Msg
+viewPagination theme sharedModel totalCount =
+  let
+    currentPage =
+      sharedModel.songsPage
+
+    pageButton isActive isDisabled msg label =
+      button
+        [ onClick msg
+        , Html.Styled.Attributes.disabled isDisabled
+        , css
+            [ px_3
+            , py_1
+            , rounded
+            , border
+            , border_solid
+            , border_color theme.border
+            , text_color
+                (if isActive
+                    then theme.textOnAccent
+                    else theme.textPrimary
+                )
+            , bg_color
+                (if isActive
+                    then theme.bgAccent
+                    else theme.bgInput
+                )
+            , if isDisabled
+              then Css.batch [ opacity_50, cursor_not_allowed ]
+              else cursor_pointer
+            ]
+        ]
+        [ text label ]
+  in
+  if sharedModel.songsSearch
+    /= Nothing
+    || filtersActive sharedModel.songsFilters
+    then if currentPage == 1 && not sharedModel.hasNextSongsPage
+      then text ""
+      else div
+        [ css [ flex, items_center, justify_center, gap_4, mt_6 ] ]
+        [ pageButton
+            False
+            (currentPage == 1)
+            (SelectedPage (currentPage - 1))
+            "‹ Previous"
+        , span
+            [ css [ font_semibold ] ]
+            [ text ("Page " ++ String.fromInt currentPage) ]
+        , pageButton
+            False
+            (not sharedModel.hasNextSongsPage)
+            (SelectedPage (currentPage + 1))
+            "Next ›"
+        ]
+    else
+      let
+        numberOfPages =
+          Basics.max 1 <|
+            (totalCount + Shared.Model.songsPerPage - 1)
+            // Shared.Model.songsPerPage
+      in
+      if numberOfPages <= 1
+        then text ""
+        else div
+          [ css [ flex, flex_wrap, items_center, justify_center, gap_2, mt_6 ] ]
+          (pageButton
+              False
+              (currentPage == 1)
+              (SelectedPage (currentPage - 1))
+              "‹"
+              :: (List.range 1 numberOfPages
+                |> List.map
+                    (\pageNumber -> pageButton
+                        (pageNumber == currentPage)
+                        False
+                        (SelectedPage pageNumber)
+                        (String.fromInt pageNumber)
+                    )
+              )
+            ++ [ pageButton
+                False
+                (currentPage == numberOfPages)
+                (SelectedPage (currentPage + 1))
+                "›"
+            ]
+          )
 
 
 formatGqlErrors : Theme -> List GraphQL.Error -> Html msg
@@ -681,17 +717,13 @@ formatGqlErrors theme gqlErrors =
 
 viewFilterSelect :
   Theme
-  -> List Song
+  -> List String
   -> String
-  -> (Song -> Maybe String)
   -> FilterField
   -> Maybe String
   -> Html Msg
-viewFilterSelect theme songs labelText getter field current =
+viewFilterSelect theme values labelText field current =
   let
-    values =
-      uniqueValues getter songs
-
     optionEl v =
       option
         [ Html.Styled.Attributes.value v ]
@@ -805,17 +837,17 @@ instrumentationSelectSettings darkMode =
 
 viewInstrumentationFilter :
   Bool
-  -> List Song
+  -> List String
   -> MultiSelect.SmartSelect Msg String
   -> List String
   -> Html Msg
-viewInstrumentationFilter darkMode songs select selected =
+viewInstrumentationFilter darkMode options select selected =
   div
     [ css [ Css.minWidth (Css.rem 14) ] ]
     [ Html.Styled.fromUnstyled <|
         MultiSelect.view
           { selected = selected
-          , options = uniqueInstrumentations songs
+          , options = options
           , optionLabelFn = identity
           , viewSelectedOptionFn = viewSelectedInstrumentation
           , settings = instrumentationSelectSettings darkMode
@@ -828,18 +860,35 @@ viewToolbar :
   Theme
   -> Bool
   -> Model
-  -> GraphQL.Response (List Song)
+  -> Shared.Model
   -> List (Html Msg)
-viewToolbar theme darkMode model songsResult =
-  case songsResult of
+viewToolbar theme darkMode model sharedModel =
+  case sharedModel.songsResult of
     Ok gqlRes ->
       [ case gqlRes.data of
         Just songsData ->
           let
+            totalIsUnknown =
+              sharedModel.songsSearch
+              /= Nothing
+              || filtersActive sharedModel.songsFilters
+
             visibleSongs =
-              songsData.root
-                |> List.filter (filterBySearchStr model.searchStrMb)
-                |> List.filter (matchesFilters model.filters)
+              songsData.root.songs
+
+            -- Distinct values over the whole collection; databases
+            -- without the `filter_options_json` view fall back
+            -- to the values of the currently loaded page
+            filterOptions =
+              case sharedModel.filterOptions of
+                Just options ->
+                  options
+                Nothing ->
+                  { interpreters = uniqueValues .interpreter songsData.root.songs
+                  , instrumentations = uniqueInstrumentations songsData.root.songs
+                  , keys = uniqueValues .key songsData.root.songs
+                  , tempos = uniqueValues .tempo songsData.root.songs
+                  }
           in
           div
             [ css [ flex, flex_col, mt_4, gap_4 ] ]
@@ -881,13 +930,17 @@ viewToolbar theme darkMode model songsResult =
                           |> List.length
                           |> String.fromInt
                         )
-                    , if List.length visibleSongs
-                      == List.length songsData.root
+                    , -- While searching or filtering, total_count still
+                    -- refers to the unfiltered collection,
+                    -- so it is not shown
+                    if totalIsUnknown
+                      || List.length visibleSongs
+                      == songsData.root.totalCount
                       then text ""
                       else text
                         (" / "
                           ++ String.fromInt
-                            (List.length songsData.root)
+                            songsData.root.totalCount
                         )
                     ]
                 ]
@@ -895,28 +948,25 @@ viewToolbar theme darkMode model songsResult =
                 [ css [ flex, flex_wrap, gap_2 ] ]
                 [ viewFilterSelect
                     theme
-                    songsData.root
+                    filterOptions.interpreters
                     "Interpreters"
-                    .interpreter
                     Interpreter
                     model.filters.interpreter
                 , viewInstrumentationFilter
                     darkMode
-                    songsData.root
+                    filterOptions.instrumentations
                     model.instrumentationSelect
                     model.filters.instrumentation
                 , viewFilterSelect
                     theme
-                    songsData.root
+                    filterOptions.keys
                     "Keys"
-                    .key
                     Key
                     model.filters.key
                 , viewFilterSelect
                     theme
-                    songsData.root
+                    filterOptions.tempos
                     "Tempos"
-                    .tempo
                     Tempo
                     model.filters.tempo
                 , if filtersActive model.filters
@@ -1071,7 +1121,7 @@ view sharedModel model =
                         ]
                   , colorPrefControl theme darkMode sharedModel.colorPref
                   ]
-                  :: viewToolbar theme darkMode model sharedModel.songsResult
+                  :: viewToolbar theme darkMode model sharedModel
               )
           , div
               [ css [ overflow_scroll, pb_12, sm [ px_10 ] ] ]
@@ -1129,9 +1179,11 @@ view sharedModel model =
                                 Just songsData ->
                                   [ viewSongsTable
                                       theme
-                                      model.searchStrMb
-                                      model.filters
-                                      songsData.root
+                                      songsData.root.songs
+                                  , viewPagination
+                                      theme
+                                      sharedModel
+                                      songsData.root.totalCount
                                   ]
                                 Nothing ->
                                   let

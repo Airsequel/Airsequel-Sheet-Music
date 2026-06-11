@@ -1,7 +1,16 @@
-module Shared.Model exposing (ColorPref(..), Model, isDark)
+module Shared.Model exposing
+  ( ColorPref(..)
+  , Filters
+  , Model
+  , emptyFilters
+  , filtersActive
+  , isDark
+  , songsPerPage
+  )
 
 import GraphQL
-import Types.Song exposing (Song)
+import Types.FilterOptions exposing (FilterOptions)
+import Types.Song exposing (SongsPage)
 
 
 {-| Normally, this value would live in "Shared.elm"
@@ -19,10 +28,54 @@ type ColorPref
 
 type alias Model =
   { readonlyId : Maybe String
-  , songsResult : GraphQL.Response (List Song)
+  , songsResult : GraphQL.Response SongsPage
+  , songsPage : Int
+  , songsSearch : Maybe String
+  , songsSearchVersion : Int
+  , songsFilters : Filters
+  , hasNextSongsPage : Bool
+  , filterOptions : Maybe FilterOptions
   , colorPref : ColorPref
   , systemDark : Bool
   }
+
+
+{-| Active dropdown filters; applied server-side
+via the GraphQL `filter` argument.
+-}
+type alias Filters =
+  { interpreter : Maybe String
+  , instrumentation : List String
+  , key : Maybe String
+  , tempo : Maybe String
+  }
+
+
+emptyFilters : Filters
+emptyFilters =
+  { interpreter = Nothing
+  , instrumentation = []
+  , key = Nothing
+  , tempo = Nothing
+  }
+
+
+filtersActive : Filters -> Bool
+filtersActive f =
+  f.interpreter
+  /= Nothing
+  || not (List.isEmpty f.instrumentation)
+  || f.key
+  /= Nothing
+  || f.tempo
+  /= Nothing
+
+
+{-| Number of songs fetched per page (server-side via limit/offset).
+-}
+songsPerPage : Int
+songsPerPage =
+  50
 
 
 {-| Resolve the effective dark-mode flag from the user's preference

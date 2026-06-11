@@ -1,8 +1,9 @@
 module Shared.Msg exposing (Msg(..))
 
 import GraphQL
-import Shared.Model exposing (ColorPref)
-import Types.Song exposing (Song)
+import Shared.Model exposing (ColorPref, Filters)
+import Types.FilterOptions exposing (FilterOptions)
+import Types.Song exposing (SongsPage)
 
 
 {-| Normally, this value would live in "Shared.elm"
@@ -13,7 +14,12 @@ own file, so they can be imported by `Effect.elm`
 
 -}
 type Msg
-  = OnSongs (GraphQL.Response (List Song))
+  = OnSongs (GraphQL.Response SongsPage)
+  | OnFilterOptions (GraphQL.Response FilterOptions)
   | SubmittedReadonlyId String
+  | SelectedSongsPage Int
+  | EnteredSongsSearch String
+  | DebouncedSongsSearch Int
+  | SetSongsFilters Filters
   | SetColorPref ColorPref
   | SystemDarkChanged Bool

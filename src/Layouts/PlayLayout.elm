@@ -26,7 +26,7 @@ import Theme
 import Types.File exposing (File)
 import Types.ReadDirection exposing (ReadDirection(..))
 import Types.Song exposing (Song)
-import Utils exposing (fileContentUrl, viewHttpError)
+import Utils exposing (fileContentUrl, viewGraphQLErrors, viewHttpError)
 import View exposing (View)
 
 
@@ -606,17 +606,35 @@ view settings sharedModel { toContentMsg, model } =
                 ]
               }
             _ ->
-              { title = "Error: Multiple songs"
-              , body = [ Html.text "Error: Multiple songs" ]
+              { title = "Song not found"
+              , body = [ Html.text "Song not found" ]
               }
         Nothing ->
-          { title = "Loading …"
-          , body = [ toUnstyled <|
-                div
-                  [ css [ text_center, font_sans, pt_8 ] ]
-                  [ text "Loading …" ]
-            ]
-          }
+          case ( gqlRes.errors, sharedModel.readonlyId ) of
+            ( Just errors, _ ) ->
+              { title = "Error"
+              , body = [ toUnstyled <| viewGraphQLErrors errors ]
+              }
+            ( Nothing, Nothing ) ->
+              { title = "No Read-Only ID"
+              , body = [ toUnstyled <|
+                    div
+                      [ css [ text_center, font_sans, pt_8 ] ]
+                      [ text <|
+                          "No read-only ID is set. "
+                          ++ "Open the home page and enter "
+                          ++ "your database's read-only ID."
+                      ]
+                ]
+              }
+            _ ->
+              { title = "Loading …"
+              , body = [ toUnstyled <|
+                    div
+                      [ css [ text_center, font_sans, pt_8 ] ]
+                      [ text "Loading …" ]
+                ]
+              }
     Err httpError ->
       { title = "Error"
       , body = [ toUnstyled <| viewHttpError httpError ]

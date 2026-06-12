@@ -3,10 +3,12 @@ module Utils exposing
   , arrowIconVert
   , fileContentUrl
   , host
+  , viewGraphQLErrors
   , viewHttpError
   )
 
 import Css
+import GraphQL
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Http exposing (Error(..))
@@ -49,6 +51,22 @@ viewHttpError error =
       errorWrapper <| "BadPayload: " ++ response
     BadUrl url ->
       errorWrapper <| ("BadUrl: " ++ url)
+
+
+{-| GraphQL-level errors arrive with HTTP 200 and `data: null`.
+Without this they would be indistinguishable from a pending request.
+-}
+viewGraphQLErrors : List GraphQL.Error -> Html msg
+viewGraphQLErrors errors =
+  pre
+    [ css [ p_8, text_color red_800, whitespace_pre_wrap ] ]
+    [ text <|
+        "GraphQL Errors:\n\n"
+        ++ (errors
+          |> List.map .message
+          |> String.join "\n"
+        )
+    ]
 
 
 arrowIconVert : List Css.Style -> Html msg

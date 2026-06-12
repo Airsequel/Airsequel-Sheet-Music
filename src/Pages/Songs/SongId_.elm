@@ -17,7 +17,7 @@ import Tailwind.Utilities exposing (..)
 import Theme exposing (Theme)
 import Types.File exposing (File)
 import Types.Song exposing (Song)
-import Utils exposing (arrowIconVert, fileContentUrl, viewHttpError)
+import Utils exposing (arrowIconVert, fileContentUrl, viewGraphQLErrors, viewHttpError)
 import View exposing (View)
 
 
@@ -345,13 +345,28 @@ view sharedModel model =
                 ]
               }
             _ ->
-              { title = "Error: Multiple songs"
-              , body = [ Html.text "Error: Multiple songs" ]
+              { title = "Song not found"
+              , body = [ Html.text "Song not found" ]
               }
         Nothing ->
-          { title = "Loading …"
-          , body = [ Html.text "Loading …" ]
-          }
+          case ( gqlRes.errors, sharedModel.readonlyId ) of
+            ( Just errors, _ ) ->
+              { title = "Error"
+              , body = [ toUnstyled <| viewGraphQLErrors errors ]
+              }
+            ( Nothing, Nothing ) ->
+              { title = "No Read-Only ID"
+              , body = [ Html.text
+                    ("No read-only ID is set. "
+                      ++ "Open the home page and enter "
+                      ++ "your database's read-only ID."
+                    )
+                ]
+              }
+            _ ->
+              { title = "Loading …"
+              , body = [ Html.text "Loading …" ]
+              }
     Err error ->
       { title = "Error"
       , body = [ toUnstyled <| viewHttpError error ]

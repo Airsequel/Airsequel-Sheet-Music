@@ -82,7 +82,18 @@ type alias Model =
   , showHeading : Bool
   , showPageNumbers : Bool
   , playingAudio : Maybe Int
+  , pageMaxWidth : Float-- In rem
   }
+
+
+pageMaxWidthDefault : Float
+pageMaxWidthDefault =
+  72
+
+
+pageMaxWidthStep : Float
+pageMaxWidthStep =
+  8
 
 
 init : Shared.Model -> () -> ( Model, Effect Msg )
@@ -95,6 +106,7 @@ init sharedModel _ =
     , showHeading = True
     , showPageNumbers = True
     , playingAudio = Nothing
+    , pageMaxWidth = pageMaxWidthDefault
     }
   , Effect.none
   )
@@ -106,6 +118,7 @@ type Msg
   SetColorScheme ColorScheme
   | SetShowHeading Bool
   | SetShowPageNumbers Bool
+  | AdjustPageMaxWidth Float
   | ToggleAudio Int
 
 
@@ -126,6 +139,12 @@ update msg model =
       )
     SetShowPageNumbers val ->
       ( { model | showPageNumbers = val }
+      , Effect.none
+      )
+    AdjustPageMaxWidth delta ->
+      ( { model
+          | pageMaxWidth = clamp 24 200 (model.pageMaxWidth + delta)
+        }
       , Effect.none
       )
     ToggleAudio rowid ->
@@ -249,7 +268,7 @@ viewImage song readDirection model readOnlyId index file =
                 case readDirection of
                   ReadHorizontal ->
                     [ block -- Prevent wide images from expanding too much
-                    , max_w_6xl -- Prevent image from losing aspect ratio
+                    , Css.maxWidth (Css.rem model.pageMaxWidth) -- Prevent image from losing aspect ratio
                     , object_contain
                     , if numOfPages > 1
                       then h_full
@@ -397,6 +416,21 @@ getSidebar sharedModel model readOnlyId audioFiles =
           ]
       ]
 
+    pageWidthButtons =
+      [ button
+          [ css [ btnCss, markSelectedFor True False ]
+          , title "Increase max width of pages"
+          , onClick (AdjustPageMaxWidth pageMaxWidthStep)
+          ]
+          [ text "+" ]
+      , button
+          [ css [ btnCss, markSelectedFor True False ]
+          , title "Decrease max width of pages"
+          , onClick (AdjustPageMaxWidth -pageMaxWidthStep)
+          ]
+          [ text "−" ]
+      ]
+
     placeholder =
       [ div [ css [ h_3 ] ] [] ]
 
@@ -467,6 +501,8 @@ getSidebar sharedModel model readOnlyId audioFiles =
       ++ placeholder-- ++ alignmentButtons
       -- ++ placeholder
       ++ colorSchemeButtons
+      ++ placeholder
+      ++ pageWidthButtons
       ++ audioControls
     )
 

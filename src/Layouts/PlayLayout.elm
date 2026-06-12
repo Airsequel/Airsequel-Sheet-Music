@@ -1,6 +1,5 @@
 module Layouts.PlayLayout exposing
   ( Alignment(..)
-  , ColorScheme(..)
   , Model
   , Msg
   , Props
@@ -8,6 +7,7 @@ module Layouts.PlayLayout exposing
   )
 
 import Css
+import Dict
 import Effect exposing (Effect)
 import GraphQL
 import Html
@@ -20,12 +20,14 @@ import Maybe exposing (withDefault)
 import Route exposing (Route)
 import Shared
 import Shared.Model
+import Shared.Msg
 import Tailwind.Theme exposing (..)
 import Tailwind.Utilities exposing (..)
 import Theme
 import Types.File exposing (File)
 import Types.ReadDirection exposing (ReadDirection(..))
 import Types.Song exposing (Song)
+import Types.SongSettings exposing (ColorScheme(..), SongSettings)
 import Utils exposing (fileContentUrl, viewGraphQLErrors, viewHttpError)
 import View exposing (View)
 
@@ -40,8 +42,8 @@ type alias Props =
 layout : Props -> Shared.Model -> Route () -> Layout () Model Msg contentMsg
 layout settings sharedModel _ =
   Layout.new
-    { init = init sharedModel
-    , update = update
+    { init = init settings sharedModel
+    , update = update settings
     , view = view settings sharedModel
     , subscriptions = subscriptions
     }
@@ -59,12 +61,6 @@ type Alignment
   = AlignTop
   | AlignCenter
   | AlignBottom
-
-
-type ColorScheme
-  = Light
-  | Dark
-  | Sepia
 
 
 {-| Solarized colors <https://ethanschoonover.com/solarized/>
@@ -98,19 +94,52 @@ pageMaxWidthStep =
   8
 
 
-init : Shared.Model -> () -> ( Model, Effect Msg )
-init sharedModel _ =
+defaultSettings : Shared.Model -> SongSettings
+defaultSettings sharedModel =
+  { colorScheme =
+      if Shared.Model.isDark sharedModel
+        then Dark
+        else Light
+  , showHeading = True
+  , showPageNumbers = True
+  , pageMaxWidth = pageMaxWidthDefault
+  , centerPages = True
+  , showDividers = True
+  }
+
+
+toSongSettings : Model -> SongSettings
+toSongSettings model =
+  { colorScheme = model.colorScheme
+  , showHeading = model.showHeading
+  , showPageNumbers = model.showPageNumbers
+  , pageMaxWidth = model.pageMaxWidth
+  , centerPages = model.centerPages
+  , showDividers = model.showDividers
+  }
+
+
+init : Props -> Shared.Model -> () -> ( Model, Effect Msg )
+init props sharedModel _ =
+  let
+    -- Stored settings only apply to the horizontal view;
+    -- the vertical view may get its own styling options later
+    settings =
+      case props.readDirection of
+        ReadHorizontal ->
+          Dict.get props.songId sharedModel.horizontalSongSettings
+            |> Maybe.withDefault (defaultSettings sharedModel)
+        ReadVertical ->
+          defaultSettings sharedModel
+  in
   ( { -- alignment = AlignTop,
-    colorScheme =
-        if Shared.Model.isDark sharedModel
-          then Dark
-          else Light
-    , showHeading = True
-    , showPageNumbers = True
+    colorScheme = settings.colorScheme
+    , showHeading = settings.showHeading
+    , showPageNumbers = settings.showPageNumbers
     , playingAudio = Nothing
-    , pageMaxWidth = pageMaxWidthDefault
-    , centerPages = True
-    , showDividers = True
+    , pageMaxWidth = settings.pageMaxWidth
+    , centerPages = settings.centerPages
+    , showDividers = settings.showDividers
     }
   , Effect.none
   )
@@ -128,39 +157,45 @@ type Msg
   | ToggleAudio Int
 
 
-update : Msg -> Model -> ( Model, Effect Msg )
-update msg model =
+update : Props -> Msg -> Model -> ( Model, Effect Msg )
+update props msg model =
+  let
+    -- Apply a settings change and store it for this song
+    -- in local storage (only in the horizontal view)
+    persist : Model -> ( Model, Effect Msg )
+    persist newModel =
+      ( newModel
+      , case props.readDirection of
+          ReadHorizontal ->
+            Effect.sendSharedMsg
+              (Shared.Msg.SetHorizontalSongSettings
+                  props.songId
+                  (toSongSettings newModel)
+              )
+          ReadVertical ->
+            Effect.none
+      )
+  in
   case msg of
     -- SetAlignment alignment ->
     --     ( { model | alignment = alignment }
     --     , Effect.none
     --     )
     SetColorScheme colorScheme ->
-      ( { model | colorScheme = colorScheme }
-      , Effect.none
-      )
+      persist { model | colorScheme = colorScheme }
     SetShowHeading val ->
-      ( { model | showHeading = val }
-      , Effect.none
-      )
+      persist { model | showHeading = val }
     SetShowPageNumbers val ->
-      ( { model | showPageNumbers = val }
-      , Effect.none
-      )
+      persist { model | showPageNumbers = val }
     AdjustPageMaxWidth delta ->
-      ( { model
+      persist
+        { model
           | pageMaxWidth = clamp 24 200 (model.pageMaxWidth + delta)
         }
-      , Effect.none
-      )
     SetCenterPages val ->
-      ( { model | centerPages = val }
-      , Effect.none
-      )
+      persist { model | centerPages = val }
     SetShowDividers val ->
-      ( { model | showDividers = val }
-      , Effect.none
-      )
+      persist { model | showDividers = val }
     ToggleAudio rowid ->
       ( { model
           | playingAudio =

@@ -10,6 +10,7 @@ port module Effect exposing
   , clearReadonlyId
   , saveReadonlyId
   , saveColorPref
+  , saveHorizontalSongSettings
   , sendSharedMsg
   , map
   , toCmd
@@ -22,6 +23,7 @@ port module Effect exposing
 @docs sendCmd, sendMsg, sendSharedMsg
 @docs pushRoute, replaceRoute, loadExternalUrl
 @docs clearReadonlyId, saveReadonlyId, saveColorPref
+@docs saveHorizontalSongSettings
 
 @docs map, toCmd
 
@@ -35,6 +37,7 @@ import Route.Path
 import Shared.Model
 import Shared.Msg
 import Task
+import Types.SongSettings exposing (SongSettings)
 import Url exposing (Url)
 
 
@@ -78,6 +81,14 @@ saveColorPref pref =
   SendToLocalStorage
     { key = "colorPref"
     , value = Json.Encode.string pref
+    }
+
+
+saveHorizontalSongSettings : Dict String SongSettings -> Effect msg
+saveHorizontalSongSettings songSettings =
+  SendToLocalStorage
+    { key = "horizontalSongSettings"
+    , value = Types.SongSettings.encodeDict songSettings
     }
 
 

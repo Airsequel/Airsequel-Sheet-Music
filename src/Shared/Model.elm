@@ -8,9 +8,11 @@ module Shared.Model exposing
   , songsPerPage
   )
 
+import Dict exposing (Dict)
 import GraphQL
 import Types.FilterOptions exposing (FilterOptions)
 import Types.Song exposing (SongsPage)
+import Types.SongSettings exposing (SongSettings)
 
 
 {-| Normally, this value would live in "Shared.elm"
@@ -37,6 +39,7 @@ type alias Model =
   , filterOptions : Maybe FilterOptions
   , colorPref : ColorPref
   , systemDark : Bool
+  , horizontalSongSettings : Dict String SongSettings
   }
 
 

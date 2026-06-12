@@ -6,10 +6,19 @@ export const flags = ({ env }) => {
     ? JSON.parse(stored)
     : "auto"
 
+  let horizontalSongSettings = {}
+  try {
+    horizontalSongSettings = JSON.parse(window.localStorage.horizontalSongSettings || "{}")
+  }
+  catch (error) {
+    // Corrupt data must not break startup; Elm falls back to defaults
+  }
+
   return {
     readonlyId: JSON.parse(window.localStorage.readonlyId || null),
     colorPref: colorPref,
-    systemDark: darkQuery.matches
+    systemDark: darkQuery.matches,
+    horizontalSongSettings: horizontalSongSettings
   }
 }
 

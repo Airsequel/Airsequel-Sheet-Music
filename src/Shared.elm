@@ -18,6 +18,7 @@ module Shared exposing
 
 -}
 
+import Dict exposing (Dict)
 import Effect exposing (Effect)
 import GraphQL
 import Json.Decode
@@ -29,6 +30,7 @@ import Shared.Msg
 import Task
 import Types.FilterOptions exposing (filterOptionsDecoder)
 import Types.Song exposing (songsDecoder, songsPageDecoder)
+import Types.SongSettings exposing (SongSettings)
 import Utils exposing (host)
 
 
@@ -255,18 +257,26 @@ type alias Flags =
   { readonlyId : Maybe String
   , colorPref : ColorPref
   , systemDark : Bool
+  , horizontalSongSettings : Dict String SongSettings
   }
 
 
 decoder : Json.Decode.Decoder Flags
 decoder =
-  Json.Decode.map3
+  Json.Decode.map4
     Flags
     (Json.Decode.field "readonlyId" (Json.Decode.maybe Json.Decode.string))
     (Json.Decode.field "colorPref" Json.Decode.string
       |> Json.Decode.map colorPrefFromString
     )
     (Json.Decode.field "systemDark" Json.Decode.bool)
+    -- Fall back to no stored settings if the data is missing or corrupt,
+    -- so the other flags still get applied
+    (Json.Decode.oneOf
+        [ Json.Decode.field "horizontalSongSettings" Types.SongSettings.dictDecoder
+        , Json.Decode.succeed Dict.empty
+        ]
+    )
 
 
 -- INIT
@@ -291,6 +301,7 @@ init flagsResult _ =
       , filterOptions = Nothing
       , colorPref = Auto
       , systemDark = False
+      , horizontalSongSettings = Dict.empty
       }
   in
   case flagsResult of
@@ -300,6 +311,7 @@ init flagsResult _ =
           { emptyModel
             | colorPref = flags.colorPref
             , systemDark = flags.systemDark
+            , horizontalSongSettings = flags.horizontalSongSettings
           }
       in
       case flags.readonlyId of
@@ -453,6 +465,14 @@ update _ msg model =
     Shared.Msg.SystemDarkChanged isDark ->
       ( { model | systemDark = isDark }
       , Effect.none
+      )
+    Shared.Msg.SetHorizontalSongSettings songId settings ->
+      let
+        newHorizontalSongSettings =
+          Dict.insert songId settings model.horizontalSongSettings
+      in
+      ( { model | horizontalSongSettings = newHorizontalSongSettings }
+      , Effect.saveHorizontalSongSettings newHorizontalSongSettings
       )
 
 

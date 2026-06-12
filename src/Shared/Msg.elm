@@ -4,6 +4,7 @@ import GraphQL
 import Shared.Model exposing (ColorPref, Filters)
 import Types.FilterOptions exposing (FilterOptions)
 import Types.Song exposing (SongsPage)
+import Types.SongSettings exposing (SongSettings)
 
 
 {-| Normally, this value would live in "Shared.elm"
@@ -23,3 +24,4 @@ type Msg
   | SetSongsFilters Filters
   | SetColorPref ColorPref
   | SystemDarkChanged Bool
+  | SetHorizontalSongSettings String SongSettings

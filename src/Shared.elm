@@ -374,6 +374,26 @@ update _ msg model =
           )
         Nothing ->
           ( { model | songsFilters = filters }, Effect.none )
+    Shared.Msg.ResetSongsSearchAndFilters ->
+      let
+        -- Invalidate any pending search debounce
+        newModel =
+          { model
+            | songsSearch = Nothing
+            , songsSearchVersion = model.songsSearchVersion + 1
+            , songsFilters = Shared.Model.emptyFilters
+            , songsPage = 1
+          }
+      in
+      case model.readonlyId of
+        Just readonlyId ->
+          ( { newModel
+              | songsResult = Ok { data = Nothing, errors = Nothing }
+            }
+          , getSongs readonlyId Nothing Shared.Model.emptyFilters 1
+          )
+        Nothing ->
+          ( newModel, Effect.none )
     Shared.Msg.EnteredSongsSearch searchStr ->
       let
         newVersion =

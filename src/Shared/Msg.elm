@@ -22,6 +22,7 @@ type Msg
   | EnteredSongsSearch String
   | DebouncedSongsSearch Int
   | SetSongsFilters Filters
+  | ResetSongsSearchAndFilters
   | SetColorPref ColorPref
   | SystemDarkChanged Bool
   | SetHorizontalSongSettings String SongSettings

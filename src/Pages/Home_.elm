@@ -182,7 +182,7 @@ update msg model =
       )
     ResetFilters ->
       ( { model | filters = emptyFilters }
-      , Effect.sendSharedMsg (Shared.Msg.SetSongsFilters emptyFilters)
+      , Effect.sendSharedMsg Shared.Msg.ResetSongsSearchAndFilters
       )
     SelectedPage pageNumber ->
       ( model
@@ -918,6 +918,10 @@ viewToolbar theme darkMode model sharedModel =
                             , sm [ w_80 ]
                             ]
                         , placeholder "Search"
+                        , value
+                            (sharedModel.songsSearch
+                              |> Maybe.withDefault ""
+                            )
                         , onInput EnteredSearch
                         ]
                         []
@@ -970,6 +974,8 @@ viewToolbar theme darkMode model sharedModel =
                     Tempo
                     model.filters.tempo
                 , if filtersActive model.filters
+                  || sharedModel.songsSearch
+                  /= Nothing
                   then button
                     [ onClick ResetFilters
                     , css
@@ -981,7 +987,7 @@ viewToolbar theme darkMode model sharedModel =
                         , text_color theme.textLink
                         ]
                     ]
-                    [ text "Reset filters" ]
+                    [ text "Reset search & filters" ]
                   else text ""
                 ]
             ]

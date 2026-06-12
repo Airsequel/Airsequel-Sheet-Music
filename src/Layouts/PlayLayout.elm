@@ -81,17 +81,25 @@ type alias Model =
   , pageMaxWidth : Float-- In rem
   , centerPages : Bool
   , showDividers : Bool
+  , metronomeBpm : Maybe Int-- Nothing = use the tempo of the song
+  , metronomeRunning : Bool
   }
 
 
 pageMaxWidthDefault : Float
-pageMaxWidthDefault =
-  72
+pageMaxWidthDefault = 72
 
 
 pageMaxWidthStep : Float
-pageMaxWidthStep =
-  8
+pageMaxWidthStep = 8
+
+
+metronomeBpmFallback : Int
+metronomeBpmFallback = 90
+
+
+metronomeBpmStep : Int
+metronomeBpmStep = 5
 
 
 defaultSettings : Shared.Model -> ReadDirection -> SongSettings
@@ -113,6 +121,7 @@ defaultSettings sharedModel readDirection =
   , pageMaxWidth = pageMaxWidthDefault
   , centerPages = True
   , showDividers = True
+  , metronomeBpm = Nothing
   }
 
 
@@ -125,6 +134,34 @@ resolveShowPageNumbers model numOfPages =
     |> Maybe.withDefault (numOfPages > 2)
 
 
+{-| Without an explicit user choice, the metronome runs at the tempo
+from the song's metadata (the first number in the free-form field,
+e.g. "120" or "120-130 bpm")
+-}
+resolveMetronomeBpm : Model -> Song -> Int
+resolveMetronomeBpm model song =
+  let
+    firstNumber str =
+      str
+        |> String.map
+            (\char ->
+                if Char.isDigit char
+                  then char
+                  else ' '
+            )
+        |> String.words
+        |> List.head
+        |> Maybe.andThen String.toInt
+  in
+  case model.metronomeBpm of
+    Just bpm ->
+      bpm
+    Nothing ->
+      song.tempo
+        |> Maybe.andThen firstNumber
+        |> Maybe.withDefault metronomeBpmFallback
+
+
 toSongSettings : Model -> SongSettings
 toSongSettings model =
   { colorScheme = model.colorScheme
@@ -133,6 +170,7 @@ toSongSettings model =
   , pageMaxWidth = model.pageMaxWidth
   , centerPages = model.centerPages
   , showDividers = model.showDividers
+  , metronomeBpm = model.metronomeBpm
   }
 
 
@@ -158,6 +196,8 @@ init props sharedModel _ =
     , pageMaxWidth = settings.pageMaxWidth
     , centerPages = settings.centerPages
     , showDividers = settings.showDividers
+    , metronomeBpm = settings.metronomeBpm
+    , metronomeRunning = False
     }
   , Effect.none
   )
@@ -172,6 +212,8 @@ type Msg
   | AdjustPageMaxWidth Float
   | SetCenterPages Bool
   | SetShowDividers Bool
+  | SetMetronomeBpm Int
+  | ToggleMetronome
   | ToggleAudio Int
 
 
@@ -214,6 +256,12 @@ update props msg model =
       persist { model | centerPages = val }
     SetShowDividers val ->
       persist { model | showDividers = val }
+    SetMetronomeBpm bpm ->
+      persist { model | metronomeBpm = Just (clamp 20 400 bpm) }
+    ToggleMetronome ->
+      ( { model | metronomeRunning = not model.metronomeRunning }
+      , Effect.none
+      )
     ToggleAudio rowid ->
       ( { model
           | playingAudio =
@@ -366,8 +414,8 @@ filesAreType filetype files =
         )
 
 
-getSidebar : Shared.Model -> Model -> String -> String -> Int -> List File -> Html Msg
-getSidebar sharedModel model readOnlyId songId numOfPages audioFiles =
+getSidebar : Shared.Model -> Model -> String -> String -> Int -> Int -> List File -> Html Msg
+getSidebar sharedModel model readOnlyId songId numOfPages metronomeBpm audioFiles =
   let
     theme =
       Theme.fromDarkMode (Shared.Model.isDark sharedModel)
@@ -548,6 +596,45 @@ getSidebar sharedModel model readOnlyId songId numOfPages audioFiles =
     placeholder =
       [ div [ css [ h_3 ] ] [] ]
 
+    metronomeControls =
+      [ button
+          [ css [ btnCss, markSelectedFor True model.metronomeRunning ]
+          , title
+              ("Start/stop metronome ("
+                ++ String.fromInt metronomeBpm
+                ++ " bpm)"
+              )
+          , onClick ToggleMetronome
+          ]
+          [ text "◭"
+          , span
+              [ css [ font_sans, text_xs ] ]
+              [ text (" " ++ String.fromInt metronomeBpm) ]
+          ]
+      , button
+          [ css [ btnCss, markSelectedFor True False ]
+          , title "Increase metronome tempo"
+          , onClick (SetMetronomeBpm (metronomeBpm + metronomeBpmStep))
+          ]
+          [ text "+" ]
+      , button
+          [ css [ btnCss, markSelectedFor True False ]
+          , title "Decrease metronome tempo"
+          , onClick (SetMetronomeBpm (metronomeBpm - metronomeBpmStep))
+          ]
+          [ text "−" ]
+      , htmlIf model.metronomeRunning <|
+          -- Hidden element that produces the clicks. Mounting it starts
+          -- the metronome, unmounting it (toggle off or leaving the
+          -- page) stops it.
+          node
+            "metronome-player"
+            [ attribute "bpm" (String.fromInt metronomeBpm)
+            , css [ Css.display Css.none ]
+            ]
+            []
+      ]
+
     audioButton index file =
       let
         label =
@@ -619,6 +706,8 @@ getSidebar sharedModel model readOnlyId songId numOfPages audioFiles =
       ++ colorSchemeButtons
       ++ placeholder
       ++ pageWidthButtons
+      ++ placeholder
+      ++ metronomeControls
       ++ audioControls
     )
 
@@ -699,6 +788,7 @@ viewSong sharedModel readDirection model readOnlyId song =
                     readOnlyId
                     (String.fromInt song.rowid)
                     (List.length sheetFiles)
+                    (resolveMetronomeBpm model song)
                     (List.filter Types.File.isAudio song.files)
                 , div
                     [ css <|

@@ -23,6 +23,9 @@ The vertical play view may get its own styling options later.
 `showPageNumbers` is `Nothing` as long as the user never toggled it,
 so the default (hide page numbers for songs with up to 2 pages)
 can be applied once the number of pages is known.
+
+`metronomeBpm` is `Nothing` as long as the user never adjusted it,
+so the tempo from the song's metadata can be used once it is loaded.
 -}
 type alias SongSettings =
   { colorScheme : ColorScheme
@@ -31,6 +34,7 @@ type alias SongSettings =
   , pageMaxWidth : Float
   , centerPages : Bool
   , showDividers : Bool
+  , metronomeBpm : Maybe Int
   }
 
 
@@ -58,7 +62,7 @@ colorSchemeFromString str =
 
 decoder : Decoder SongSettings
 decoder =
-  JD.map6
+  JD.map7
     SongSettings
     (JD.field "colorScheme" JD.string |> JD.map colorSchemeFromString)
     (JD.field "showHeading" JD.bool)
@@ -66,6 +70,12 @@ decoder =
     (JD.field "pageMaxWidth" JD.float)
     (JD.field "centerPages" JD.bool)
     (JD.field "showDividers" JD.bool)
+    -- Settings stored before the metronome existed lack this field
+    (JD.oneOf
+        [ JD.field "metronomeBpm" (JD.nullable JD.int)
+        , JD.succeed Nothing
+        ]
+    )
 
 
 dictDecoder : Decoder (Dict String SongSettings)
@@ -86,6 +96,11 @@ encode settings =
     , ( "pageMaxWidth", JE.float settings.pageMaxWidth )
     , ( "centerPages", JE.bool settings.centerPages )
     , ( "showDividers", JE.bool settings.showDividers )
+    , ( "metronomeBpm"
+    , settings.metronomeBpm
+        |> Maybe.map JE.int
+        |> Maybe.withDefault JE.null
+    )
     ]
 
 

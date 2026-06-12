@@ -293,6 +293,7 @@ init flagsResult _ =
           { data = Nothing
           , errors = Nothing
           }
+      , songsLoading = False
       , songsPage = 1
       , songsSearch = Nothing
       , songsSearchVersion = 0
@@ -340,6 +341,7 @@ update _ msg model =
       ( { model
           | readonlyId = Just readonlyId
           , songsResult = Ok { data = Nothing, errors = Nothing }
+          , songsLoading = True
           , songsPage = 1
           , songsSearch = Nothing
           , songsFilters = Shared.Model.emptyFilters
@@ -356,7 +358,7 @@ update _ msg model =
         Just readonlyId ->
           ( { model
               | songsPage = page
-              , songsResult = Ok { data = Nothing, errors = Nothing }
+              , songsLoading = True
             }
           , getSongs readonlyId model.songsSearch model.songsFilters page
           )
@@ -368,7 +370,7 @@ update _ msg model =
           ( { model
               | songsFilters = filters
               , songsPage = 1
-              , songsResult = Ok { data = Nothing, errors = Nothing }
+              , songsLoading = True
             }
           , getSongs readonlyId model.songsSearch filters 1
           )
@@ -387,9 +389,7 @@ update _ msg model =
       in
       case model.readonlyId of
         Just readonlyId ->
-          ( { newModel
-              | songsResult = Ok { data = Nothing, errors = Nothing }
-            }
+          ( { newModel | songsLoading = True }
           , getSongs readonlyId Nothing Shared.Model.emptyFilters 1
           )
         Nothing ->
@@ -416,11 +416,12 @@ update _ msg model =
       )
     Shared.Msg.DebouncedSongsSearch version ->
       -- Only fetch if no further keystroke arrived during the delay.
-      -- The previous result stays visible until the response arrives.
+      -- Only the table body shows a loading state;
+      -- the rest of the page stays in place.
       if version == model.songsSearchVersion
         then case model.readonlyId of
           Just readonlyId ->
-            ( model
+            ( { model | songsLoading = True }
             , getSongs readonlyId model.songsSearch model.songsFilters 1
             )
           Nothing ->
@@ -463,6 +464,7 @@ update _ msg model =
       in
       ( { model
           | songsResult = trimmedResult
+          , songsLoading = False
           , hasNextSongsPage = numberOfLoadedSongs > Shared.Model.songsPerPage
         }
       , Effect.none

@@ -518,8 +518,8 @@ viewSong theme song =
     ]
 
 
-viewSongsTable : Theme -> List Song -> Html Msg
-viewSongsTable theme songs =
+viewSongsTable : Theme -> Bool -> List Song -> Html Msg
+viewSongsTable theme isLoading songs =
   let
     documentIcon styles =
       Svg.svg
@@ -567,27 +567,42 @@ viewSongsTable theme songs =
             ]
         ]
 
-    favoriteSongs =
-      songs
-        |> List.filter .isFavorite
-        |> List.map (viewSong theme)
-
-    otherSongs =
-      songs
-        |> List.filter (not << .isFavorite)
-        |> List.map (viewSong theme)
-
-    separator =
-      if List.isEmpty favoriteSongs || List.isEmpty otherSongs
-        then []
-        else [ tr [ css [ h_8, border_b, border_color theme.border ] ] []
-        , tr [ css [ h_8, border_t, border_color theme.border ] ] []
+    bodyRows =
+      if isLoading
+        then [ tr
+            []
+            [ td
+                [ colspan 7
+                , css [ text_center, py_8, text_color theme.textMuted ]
+                ]
+                [ text "Loading …" ]
+            ]
         ]
+        else
+          let
+            favoriteSongs =
+              songs
+                |> List.filter .isFavorite
+                |> List.map (viewSong theme)
+
+            otherSongs =
+              songs
+                |> List.filter (not << .isFavorite)
+                |> List.map (viewSong theme)
+
+            separator =
+              if List.isEmpty favoriteSongs || List.isEmpty otherSongs
+                then []
+                else [ tr [ css [ h_8, border_b, border_color theme.border ] ] []
+                , tr [ css [ h_8, border_t, border_color theme.border ] ] []
+                ]
+          in
+          favoriteSongs ++ separator ++ otherSongs
   in
   Html.Styled.table
     [ css [ w_full, bg_color theme.bgPanel ] ]
     [ tableHead
-    , tbody [] (favoriteSongs ++ separator ++ otherSongs)
+    , tbody [] bodyRows
     ]
 
 
@@ -1185,6 +1200,7 @@ view sharedModel model =
                                 Just songsData ->
                                   [ viewSongsTable
                                       theme
+                                      sharedModel.songsLoading
                                       songsData.root.songs
                                   , viewPagination
                                       theme

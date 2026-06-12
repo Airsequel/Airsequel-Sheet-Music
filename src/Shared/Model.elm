@@ -31,6 +31,7 @@ type ColorPref
 type alias Model =
   { readonlyId : Maybe String
   , songsResult : GraphQL.Response SongsPage
+  , songsLoading : Bool
   , songsPage : Int
   , songsSearch : Maybe String
   , songsSearchVersion : Int

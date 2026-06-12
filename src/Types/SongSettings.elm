@@ -19,11 +19,15 @@ type ColorScheme
 {-| Sidebar settings of the horizontal play view, stored per song
 in local storage under the `horizontalSongSettings` key.
 The vertical play view may get its own styling options later.
+
+`showPageNumbers` is `Nothing` as long as the user never toggled it,
+so the default (hide page numbers for songs with up to 2 pages)
+can be applied once the number of pages is known.
 -}
 type alias SongSettings =
   { colorScheme : ColorScheme
   , showHeading : Bool
-  , showPageNumbers : Bool
+  , showPageNumbers : Maybe Bool
   , pageMaxWidth : Float
   , centerPages : Bool
   , showDividers : Bool
@@ -58,7 +62,7 @@ decoder =
     SongSettings
     (JD.field "colorScheme" JD.string |> JD.map colorSchemeFromString)
     (JD.field "showHeading" JD.bool)
-    (JD.field "showPageNumbers" JD.bool)
+    (JD.field "showPageNumbers" (JD.nullable JD.bool))
     (JD.field "pageMaxWidth" JD.float)
     (JD.field "centerPages" JD.bool)
     (JD.field "showDividers" JD.bool)
@@ -74,7 +78,11 @@ encode settings =
   JE.object
     [ ( "colorScheme", JE.string (colorSchemeToString settings.colorScheme) )
     , ( "showHeading", JE.bool settings.showHeading )
-    , ( "showPageNumbers", JE.bool settings.showPageNumbers )
+    , ( "showPageNumbers"
+    , settings.showPageNumbers
+        |> Maybe.map JE.bool
+        |> Maybe.withDefault JE.null
+    )
     , ( "pageMaxWidth", JE.float settings.pageMaxWidth )
     , ( "centerPages", JE.bool settings.centerPages )
     , ( "showDividers", JE.bool settings.showDividers )

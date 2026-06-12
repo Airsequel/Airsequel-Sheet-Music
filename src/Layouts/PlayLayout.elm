@@ -76,7 +76,7 @@ type alias Model =
   { -- alignment : Alignment, -- TODO: Is there still a need for this?
   colorScheme : ColorScheme
   , showHeading : Bool
-  , showPageNumbers : Bool
+  , showPageNumbers : Maybe Bool-- Nothing = hide for songs with up to 2 pages
   , playingAudio : Maybe Int
   , pageMaxWidth : Float-- In rem
   , centerPages : Bool
@@ -94,18 +94,35 @@ pageMaxWidthStep =
   8
 
 
-defaultSettings : Shared.Model -> SongSettings
-defaultSettings sharedModel =
+defaultSettings : Shared.Model -> ReadDirection -> SongSettings
+defaultSettings sharedModel readDirection =
   { colorScheme =
       if Shared.Model.isDark sharedModel
         then Dark
         else Light
-  , showHeading = True
-  , showPageNumbers = True
+  , showHeading = case readDirection of
+      ReadHorizontal ->
+        False
+      ReadVertical ->
+        True
+  , showPageNumbers = case readDirection of
+      ReadHorizontal ->
+        Nothing
+      ReadVertical ->
+        Just True
   , pageMaxWidth = pageMaxWidthDefault
   , centerPages = True
   , showDividers = True
   }
+
+
+{-| Without an explicit user choice, page numbers are only shown
+for songs with more than 2 pages
+-}
+resolveShowPageNumbers : Model -> Int -> Bool
+resolveShowPageNumbers model numOfPages =
+  model.showPageNumbers
+    |> Maybe.withDefault (numOfPages > 2)
 
 
 toSongSettings : Model -> SongSettings
@@ -128,9 +145,10 @@ init props sharedModel _ =
       case props.readDirection of
         ReadHorizontal ->
           Dict.get props.songId sharedModel.horizontalSongSettings
-            |> Maybe.withDefault (defaultSettings sharedModel)
+            |> Maybe.withDefault
+                (defaultSettings sharedModel props.readDirection)
         ReadVertical ->
-          defaultSettings sharedModel
+          defaultSettings sharedModel props.readDirection
   in
   ( { -- alignment = AlignTop,
     colorScheme = settings.colorScheme
@@ -186,7 +204,7 @@ update props msg model =
     SetShowHeading val ->
       persist { model | showHeading = val }
     SetShowPageNumbers val ->
-      persist { model | showPageNumbers = val }
+      persist { model | showPageNumbers = Just val }
     AdjustPageMaxWidth delta ->
       persist
         { model
@@ -228,6 +246,9 @@ viewImage song readDirection model readOnlyId index file =
       song.files
         |> List.filter (Types.File.isAudio >> not)
         |> List.length
+
+    showPageNumbers =
+      resolveShowPageNumbers model numOfPages
   in
   div
     [ id "viewImage"
@@ -258,7 +279,7 @@ viewImage song readDirection model readOnlyId index file =
           else Css.batch []
         ]
     ]
-    [ htmlIf model.showPageNumbers <|
+    [ htmlIf showPageNumbers <|
         div
           [ css [ Css.height pageNumHeight, text_center ] ]
           [ p
@@ -292,13 +313,13 @@ viewImage song readDirection model readOnlyId index file =
             --     AlignBottom ->
             --         justify_end
             ]
-            ++ (if (model.showHeading && index == 0) || model.showPageNumbers
+            ++ (if (model.showHeading && index == 0) || showPageNumbers
                 then [ Css.height <|
                     Css.calc
                       (Css.pct 100)
                       Css.minus
                       (Css.calc
-                          (if model.showPageNumbers
+                          (if showPageNumbers
                               then pageNumHeight
                               else Css.rem 0
                           )
@@ -401,9 +422,17 @@ getSidebar sharedModel model readOnlyId songId numOfPages audioFiles =
           ]
           [ text "H" ]
       , button
-          [ css [ btnCss, markSelectedFor True model.showPageNumbers ]
+          [ css
+              [ btnCss
+              , markSelectedFor
+                  True
+                  (resolveShowPageNumbers model numOfPages)
+              ]
           , title "Show page numbers"
-          , onClick (SetShowPageNumbers (not model.showPageNumbers))
+          , onClick
+              (SetShowPageNumbers
+                  (not (resolveShowPageNumbers model numOfPages))
+              )
           ]
           [ span
               [ css [ font_sans, text_xs ] ]

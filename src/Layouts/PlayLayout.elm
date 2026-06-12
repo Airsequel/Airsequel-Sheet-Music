@@ -83,6 +83,8 @@ type alias Model =
   , showPageNumbers : Bool
   , playingAudio : Maybe Int
   , pageMaxWidth : Float-- In rem
+  , centerPages : Bool
+  , showDividers : Bool
   }
 
 
@@ -107,6 +109,8 @@ init sharedModel _ =
     , showPageNumbers = True
     , playingAudio = Nothing
     , pageMaxWidth = pageMaxWidthDefault
+    , centerPages = True
+    , showDividers = True
     }
   , Effect.none
   )
@@ -119,6 +123,8 @@ type Msg
   | SetShowHeading Bool
   | SetShowPageNumbers Bool
   | AdjustPageMaxWidth Float
+  | SetCenterPages Bool
+  | SetShowDividers Bool
   | ToggleAudio Int
 
 
@@ -145,6 +151,14 @@ update msg model =
       ( { model
           | pageMaxWidth = clamp 24 200 (model.pageMaxWidth + delta)
         }
+      , Effect.none
+      )
+    SetCenterPages val ->
+      ( { model | centerPages = val }
+      , Effect.none
+      )
+    SetShowDividers val ->
+      ( { model | showDividers = val }
       , Effect.none
       )
     ToggleAudio rowid ->
@@ -198,13 +212,15 @@ viewImage song readDirection model readOnlyId index file =
               ]
           Sepia ->
             Css.property "mix-blend-mode" "multiply"
-        , case readDirection of
-          ReadHorizontal ->
-            if numOfPages > 1
-              then border_r_2
-              else Css.batch []
-          ReadVertical ->
-            border_b_2
+        , if model.showDividers
+          then case readDirection of
+            ReadHorizontal ->
+              if index < numOfPages - 1
+                then border_r_2
+                else Css.batch []
+            ReadVertical ->
+              border_b_2
+          else Css.batch []
         ]
     ]
     [ htmlIf model.showPageNumbers <|
@@ -294,8 +310,8 @@ filesAreType filetype files =
         )
 
 
-getSidebar : Shared.Model -> Model -> String -> List File -> Html Msg
-getSidebar sharedModel model readOnlyId audioFiles =
+getSidebar : Shared.Model -> Model -> String -> String -> Int -> List File -> Html Msg
+getSidebar sharedModel model readOnlyId songId numOfPages audioFiles =
   let
     theme =
       Theme.fromDarkMode (Shared.Model.isDark sharedModel)
@@ -328,6 +344,21 @@ getSidebar sharedModel model readOnlyId audioFiles =
           , border_color transparent
           ]
 
+    backButton =
+      [ a
+          [ css
+              [ btnCss
+              , markSelectedFor True False
+              , no_underline
+              , Css.color Css.inherit
+              , font_sans
+              ]
+          , title "Back to song details"
+          , href ("/songs/" ++ songId)
+          ]
+          [ text "←" ]
+      ]
+
     formattingButtons =
       [ button
           [ css [ btnCss, markSelectedFor True model.showHeading ]
@@ -336,9 +367,28 @@ getSidebar sharedModel model readOnlyId audioFiles =
           [ text "H" ]
       , button
           [ css [ btnCss, markSelectedFor True model.showPageNumbers ]
+          , title "Show page numbers"
           , onClick (SetShowPageNumbers (not model.showPageNumbers))
           ]
-          [ text "1️⃣" ]
+          [ span
+              [ css [ font_sans, text_xs ] ]
+              [ text ("1/" ++ String.fromInt numOfPages) ]
+          ]
+      , button
+          [ css [ btnCss, markSelectedFor True model.centerPages ]
+          , title "Center pages horizontally"
+          , onClick (SetCenterPages (not model.centerPages))
+          ]
+          [ text "↔" ]
+      , button
+          [ css [ btnCss, markSelectedFor True model.showDividers ]
+          , title "Show divider lines between pages"
+          , onClick (SetShowDividers (not model.showDividers))
+          ]
+          [ span
+              [ css [ text_color orange_500 ] ]
+              [ text "|" ]
+          ]
       ]
 
     -- alignmentButtons =
@@ -497,7 +547,9 @@ getSidebar sharedModel model readOnlyId audioFiles =
         , bg_color theme.sidebarBg
         ]
     ]
-    (formattingButtons
+    (backButton
+      ++ placeholder
+      ++ formattingButtons
       ++ placeholder-- ++ alignmentButtons
       -- ++ placeholder
       ++ colorSchemeButtons
@@ -562,26 +614,42 @@ viewSong sharedModel readDirection model readOnlyId song =
             divCenter [ text "Does not support more than one PDF per song" ]
           _ ->
             divCenter [ text "No files" ]
-        else divImages
-        <|
-          (if readDirection == ReadHorizontal
-              then [ getSidebar
-                  sharedModel
-                  model
-                  readOnlyId
-                  (List.filter Types.File.isAudio song.files)
-              ]
-              else []
-          )
-          ++ (sheetFiles
-            |> List.indexedMap
-                (viewImage
-                    song
-                    readDirection
+        else
+          let
+            pageImages =
+              sheetFiles
+                |> List.indexedMap
+                    (viewImage
+                        song
+                        readDirection
+                        model
+                        readOnlyId
+                    )
+          in
+          divImages <|
+            case readDirection of
+              ReadHorizontal ->
+                [ getSidebar
+                    sharedModel
                     model
                     readOnlyId
-                )
-          )
+                    (String.fromInt song.rowid)
+                    (List.length sheetFiles)
+                    (List.filter Types.File.isAudio song.files)
+                , div
+                    [ css <|
+                        [ flex, flex_row, h_full ]-- Auto margins center the pages when they are
+                        -- narrower than the viewport and collapse to 0
+                        -- when they overflow, so scrolling still works
+                        ++ (if model.centerPages
+                            then [ mx_auto ]
+                            else []
+                        )
+                    ]
+                    pageImages
+                ]
+              ReadVertical ->
+                pageImages
 
 
 viewPages : Props -> Shared.Model -> Model -> Song -> Html Msg

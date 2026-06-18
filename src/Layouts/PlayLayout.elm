@@ -292,7 +292,7 @@ viewImage song readDirection model readOnlyId index file =
 
     numOfPages =
       song.files
-        |> List.filter (Types.File.isAudio >> not)
+        |> List.filter Types.File.isImage
         |> List.length
 
     showPageNumbers =

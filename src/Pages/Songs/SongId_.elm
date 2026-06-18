@@ -1,11 +1,15 @@
 module Pages.Songs.SongId_ exposing (Model, Msg, page)
 
+import Bytes exposing (Bytes)
 import Css.Global
 import Effect exposing (Effect)
+import File.Download as Download
 import GraphQL
 import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
+import Html.Styled.Events exposing (onClick)
+import Http
 import Layouts
 import Markdown
 import Page exposing (Page)
@@ -61,6 +65,9 @@ init sharedModel route _ =
 -- UPDATE
 type Msg
   = OnSong (GraphQL.Response (List Song))
+  | DownloadFile String String -- filename, url
+  | GotFileBytes String (Result Http.Error Bytes) -- filename, content
+
 
 
 update : Msg -> Model -> ( Model, Effect Msg )
@@ -70,12 +77,49 @@ update msg model =
       ( { model | songsResult = songsResult }
       , Effect.none
       )
+    DownloadFile filename url ->
+      -- Fetch the bytes ourselves and offer them as a blob download.
+      -- The plain `download` attribute is ignored for cross-origin URLs,
+      -- so the browser would otherwise name the file from the sniffed
+      -- content type (e.g. an .mxl saved as .zip).
+      ( model
+      , Effect.sendCmd
+          (Http.get
+              { url = url
+              , expect = Http.expectBytesResponse
+                  (GotFileBytes filename)
+                  bytesResponse
+              }
+          )
+      )
+    GotFileBytes filename (Ok bytes) ->
+      ( model
+      , Effect.sendCmd
+          (Download.bytes filename "application/octet-stream" bytes)
+      )
+    GotFileBytes _ (Err _) ->
+      ( model, Effect.none )
+
+
+bytesResponse : Http.Response Bytes -> Result Http.Error Bytes
+bytesResponse response =
+  case response of
+    Http.BadUrl_ url ->
+      Err (Http.BadUrl url)
+    Http.Timeout_ ->
+      Err Http.Timeout
+    Http.NetworkError_ ->
+      Err Http.NetworkError
+    Http.BadStatus_ metadata _ ->
+      Err (Http.BadStatus metadata.statusCode)
+    Http.GoodStatus_ _ body ->
+      Ok body
 
 
 -- VIEW
 
 
-viewSong : Theme -> String -> Song -> Html msg
+viewSong : Theme -> String -> Song -> Html Msg
 viewSong theme readOnlyId song =
   let
     keySpan value =
@@ -273,7 +317,7 @@ viewAudio readOnlyId audioFiles =
         ]
 
 
-viewDownloads : Theme -> String -> List File -> Html msg
+viewDownloads : Theme -> String -> List File -> Html Msg
 viewDownloads theme readOnlyId otherFiles =
   if List.isEmpty otherFiles
     then text ""
@@ -292,20 +336,23 @@ viewDownloads theme readOnlyId otherFiles =
           in
           case file.filetype of
             Just filetype ->
-              if String.endsWith
-                  ("." ++ String.toLower filetype)
-                  (String.toLower base)
-                then base
-                else base ++ "." ++ filetype
+              base ++ "." ++ filetype
             Nothing ->
               base
 
         viewDownload index file =
+          let
+            name =
+              fileName index file
+          in
           li
             [ css [ mb_2 ] ]
-            [ a
-                [ href (fileContentUrl readOnlyId file.rowid)
-                , download (fileName index file)
+            [ button
+                [ onClick
+                    (DownloadFile
+                        name
+                        (fileContentUrl readOnlyId file.rowid)
+                    )
                 , css
                     [ inline_flex
                     , items_center
@@ -314,15 +361,15 @@ viewDownloads theme readOnlyId otherFiles =
                     , rounded
                     , px_2
                     , py_1
-                    , bg_color theme.bgAccent
-                    , no_underline
-                    , text_color theme.textOnAccent
+                    , bg_color theme.bgRowAlt
+                    , cursor_pointer
+                    , text_color theme.textPrimary
                     , border_solid
-                    , border_color theme.borderAccent
+                    , border_color theme.border
                     ]
                 ]
                 [ span [] [ text "⬇" ]
-                , span [] [ text (fileName index file) ]
+                , span [] [ text name ]
                 ]
             ]
       in

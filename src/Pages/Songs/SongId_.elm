@@ -90,7 +90,20 @@ viewSong theme readOnlyId song =
       List.filter Types.File.isAudio song.files
 
     sheetFiles =
-      List.filter (Types.File.isAudio >> not) song.files
+      List.filter Types.File.isImage song.files
+
+    pdfFiles =
+      List.filter Types.File.isPdf song.files
+
+    -- Files that are neither pages (images), audio, nor PDFs.
+    -- They are offered as plain downloads.
+    otherFiles =
+      List.filter
+        (\file -> not (Types.File.isAudio file)
+          && not (Types.File.isImage file)
+          && not (Types.File.isPdf file)
+        )
+        song.files
 
     hasDescription =
       case song.description of
@@ -168,7 +181,7 @@ viewSong theme readOnlyId song =
                     [ text <| String.fromInt <| List.length sheetFiles ]
                 ]
             ]
-        , if List.isEmpty sheetFiles
+        , if List.isEmpty sheetFiles && List.isEmpty pdfFiles
           then text ""
           else
             let
@@ -191,7 +204,9 @@ viewSong theme readOnlyId song =
             in
             div
               []
-              [ if song.filetypes == Just "pdf"
+              [ -- The horizontal view only makes sense for image pages,
+              -- PDFs are rendered in an iframe in the vertical view
+              if List.isEmpty sheetFiles
                 then text ""
                 else a
                   [ href
@@ -212,6 +227,7 @@ viewSong theme readOnlyId song =
                   ]
               ]
         , viewAudio readOnlyId audioFiles
+        , viewDownloads theme readOnlyId otherFiles
         ]
     , viewDescription theme song.description
     ]
@@ -254,6 +270,68 @@ viewAudio readOnlyId audioFiles =
             [ css [ text_xl, mb_4 ] ]
             [ text "Audio" ]
         , ul [] (List.indexedMap viewTrack audioFiles)
+        ]
+
+
+viewDownloads : Theme -> String -> List File -> Html msg
+viewDownloads theme readOnlyId otherFiles =
+  if List.isEmpty otherFiles
+    then text ""
+    else
+      let
+        fileName index file =
+          let
+            base =
+              case file.name of
+                Just name ->
+                  if String.trim name == ""
+                    then "file-" ++ String.fromInt (index + 1)
+                    else name
+                Nothing ->
+                  "file-" ++ String.fromInt (index + 1)
+          in
+          case file.filetype of
+            Just filetype ->
+              if String.endsWith
+                  ("." ++ String.toLower filetype)
+                  (String.toLower base)
+                then base
+                else base ++ "." ++ filetype
+            Nothing ->
+              base
+
+        viewDownload index file =
+          li
+            [ css [ mb_2 ] ]
+            [ a
+                [ href (fileContentUrl readOnlyId file.rowid)
+                , download (fileName index file)
+                , css
+                    [ inline_flex
+                    , items_center
+                    , gap_2
+                    , border
+                    , rounded
+                    , px_2
+                    , py_1
+                    , bg_color theme.bgAccent
+                    , no_underline
+                    , text_color theme.textOnAccent
+                    , border_solid
+                    , border_color theme.borderAccent
+                    ]
+                ]
+                [ span [] [ text "⬇" ]
+                , span [] [ text (fileName index file) ]
+                ]
+            ]
+      in
+      div
+        [ css [ mt_8 ] ]
+        [ h3
+            [ css [ text_xl, mb_4 ] ]
+            [ text "Files" ]
+        , ul [] (List.indexedMap viewDownload otherFiles)
         ]
 
 

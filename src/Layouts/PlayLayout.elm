@@ -405,15 +405,6 @@ viewImage song readDirection model readOnlyId index file =
     ]
 
 
-filesAreType : String -> List File -> Bool
-filesAreType filetype files =
-  files
-    |> List.all
-        (\file -> (file.filetype |> Maybe.map String.toLower)
-          == Just (String.toLower filetype)
-        )
-
-
 getSidebar : Shared.Model -> Model -> String -> String -> Int -> Int -> List File -> Html Msg
 getSidebar sharedModel model readOnlyId songId numOfPages metronomeBpm audioFiles =
   let
@@ -717,7 +708,7 @@ viewSong sharedModel readDirection model readOnlyId song =
   let
     sheetFiles : List File
     sheetFiles =
-      List.filter (Types.File.isAudio >> not) song.files
+      List.filter Types.File.isImage song.files
 
     divImages : List (Html Msg) -> Html Msg
     divImages content =
@@ -751,59 +742,56 @@ viewSong sharedModel readDirection model readOnlyId song =
         content
   in
   if List.isEmpty sheetFiles
-    then divCenter [ text "No files" ]
-    else
-      if sheetFiles |> filesAreType "pdf"
-        then case sheetFiles of
-          [file] ->
-            divImages <|
-              [ iframe
-                  [ src (fileContentUrl readOnlyId file.rowid)
-                  , css [ w_full, h_full, border_none ]
-                  ]
-                  []
+    then case List.filter Types.File.isPdf song.files of
+      [file] ->
+        divImages <|
+          [ iframe
+              [ src (fileContentUrl readOnlyId file.rowid)
+              , css [ w_full, h_full, border_none ]
               ]
-          _ :: _ ->
-            divCenter [ text "Does not support more than one PDF per song" ]
-          _ ->
-            divCenter [ text "No files" ]
-        else
-          let
-            pageImages =
-              sheetFiles
-                |> List.indexedMap
-                    (viewImage
-                        song
-                        readDirection
-                        model
-                        readOnlyId
-                    )
-          in
-          divImages <|
-            case readDirection of
-              ReadHorizontal ->
-                [ getSidebar
-                    sharedModel
+              []
+          ]
+      _ :: _ ->
+        divCenter [ text "Does not support more than one PDF per song" ]
+      [] ->
+        divCenter [ text "No files" ]
+    else
+      let
+        pageImages =
+          sheetFiles
+            |> List.indexedMap
+                (viewImage
+                    song
+                    readDirection
                     model
                     readOnlyId
-                    (String.fromInt song.rowid)
-                    (List.length sheetFiles)
-                    (resolveMetronomeBpm model song)
-                    (List.filter Types.File.isAudio song.files)
-                , div
-                    [ css <|
-                        [ flex, flex_row, h_full ]-- Auto margins center the pages when they are
-                        -- narrower than the viewport and collapse to 0
-                        -- when they overflow, so scrolling still works
-                        ++ (if model.centerPages
-                            then [ mx_auto ]
-                            else []
-                        )
-                    ]
-                    pageImages
+                )
+      in
+      divImages <|
+        case readDirection of
+          ReadHorizontal ->
+            [ getSidebar
+                sharedModel
+                model
+                readOnlyId
+                (String.fromInt song.rowid)
+                (List.length sheetFiles)
+                (resolveMetronomeBpm model song)
+                (List.filter Types.File.isAudio song.files)
+            , div
+                [ css <|
+                    [ flex, flex_row, h_full ]-- Auto margins center the pages when they are
+                    -- narrower than the viewport and collapse to 0
+                    -- when they overflow, so scrolling still works
+                    ++ (if model.centerPages
+                        then [ mx_auto ]
+                        else []
+                    )
                 ]
-              ReadVertical ->
                 pageImages
+            ]
+          ReadVertical ->
+            pageImages
 
 
 viewPages : Props -> Shared.Model -> Model -> Song -> Html Msg
@@ -819,7 +807,7 @@ viewPages settings sharedModel model song =
           ReadHorizontal ->
             h_full
           ReadVertical ->
-            if filesAreType "pdf" song.files
+            if List.any Types.File.isPdf song.files
               then h_full
               else w_full
         , case model.colorScheme of

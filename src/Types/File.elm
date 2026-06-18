@@ -1,4 +1,12 @@
-module Types.File exposing (File, audioFiletypes, fileDecoder, isAudio)
+module Types.File exposing
+  ( File
+  , audioFiletypes
+  , fileDecoder
+  , imageFiletypes
+  , isAudio
+  , isImage
+  , isPdf
+  )
 
 import Json.Decode as JD exposing (Decoder)
 
@@ -31,3 +39,22 @@ isAudio file =
       List.member (String.toLower filetype) audioFiletypes
     Nothing ->
       False
+
+
+imageFiletypes : List String
+imageFiletypes =
+  [ "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "tif", "tiff", "avif" ]
+
+
+isImage : File -> Bool
+isImage file =
+  case file.filetype of
+    Just filetype ->
+      List.member (String.toLower filetype) imageFiletypes
+    Nothing ->
+      False
+
+
+isPdf : File -> Bool
+isPdf file =
+  (file.filetype |> Maybe.map String.toLower) == Just "pdf"

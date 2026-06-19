@@ -620,31 +620,45 @@ viewPagination theme sharedModel totalCount =
     currentPage =
       sharedModel.songsPage
 
+    -- Shared geometry so buttons and ellipsis line up as equal boxes.
+    boxStyles =
+      [ Css.minWidth (Css.rem 2.5)
+      , h_10
+      , px_2
+      , inline_flex
+      , items_center
+      , justify_center
+      , rounded_lg
+      , text_lg
+      ]
+
     pageButton isActive isDisabled msg label =
       button
         [ onClick msg
         , Html.Styled.Attributes.disabled isDisabled
         , css
-            [ px_3
-            , py_1
-            , rounded
-            , border
-            , border_solid
-            , border_color theme.border
-            , text_color
-                (if isActive
-                    then theme.textOnAccent
-                    else theme.textPrimary
-                )
-            , bg_color
-                (if isActive
-                    then theme.bgAccent
-                    else theme.bgInput
-                )
-            , if isDisabled
-              then Css.batch [ opacity_50, cursor_not_allowed ]
-              else cursor_pointer
-            ]
+            (boxStyles
+              ++ [ border
+              , border_solid
+              , border_color theme.borderMuted
+              , text_color
+                  (if isActive
+                      then theme.textOnAccent
+                      else theme.textPrimary
+                  )
+              , bg_color
+                  (if isActive
+                      then theme.bgAccent
+                      else theme.bgInput
+                  )
+              , if isActive
+                then font_semibold
+                else font_medium
+              , if isDisabled
+                then Css.batch [ opacity_50, cursor_not_allowed ]
+                else cursor_pointer
+              ]
+            )
         ]
         [ text label ]
   in
@@ -654,20 +668,20 @@ viewPagination theme sharedModel totalCount =
     then if currentPage == 1 && not sharedModel.hasNextSongsPage
       then text ""
       else div
-        [ css [ flex, items_center, justify_center, gap_4, mt_6 ] ]
+        [ css [ flex, items_center, justify_center, gap_2, mt_6 ] ]
         [ pageButton
             False
             (currentPage == 1)
             (SelectedPage (currentPage - 1))
-            "‹ Previous"
+            "‹"
         , span
-            [ css [ font_semibold ] ]
+            [ css [ font_semibold, px_2 ] ]
             [ text ("Page " ++ String.fromInt currentPage) ]
         , pageButton
             False
             (not sharedModel.hasNextSongsPage)
             (SelectedPage (currentPage + 1))
-            "Next ›"
+            "›"
         ]
     else
       let
@@ -678,29 +692,109 @@ viewPagination theme sharedModel totalCount =
       in
       if numberOfPages <= 1
         then text ""
-        else div
-          [ css [ flex, flex_wrap, items_center, justify_center, gap_2, mt_6 ] ]
-          (pageButton
-              False
-              (currentPage == 1)
-              (SelectedPage (currentPage - 1))
-              "‹"
-              :: (List.range 1 numberOfPages
-                |> List.map
-                    (\pageNumber -> pageButton
-                        (pageNumber == currentPage)
-                        False
-                        (SelectedPage pageNumber)
-                        (String.fromInt pageNumber)
+        else
+          let
+            firstResult =
+              (currentPage - 1) * Shared.Model.songsPerPage + 1
+
+            lastResult =
+              Basics.min (currentPage * Shared.Model.songsPerPage) totalCount
+
+            ellipsis =
+              span
+                [ css (boxStyles ++ [ text_color theme.textMuted ]) ]
+                [ text "…" ]
+          in
+          div
+            [ css [ flex, flex_col, items_center, gap_3, mt_6 ] ]
+            [ div
+                [ css [ flex, flex_wrap, items_center, justify_center, gap_2 ] ]
+                (pageButton
+                    False
+                    (currentPage == 1)
+                    (SelectedPage (currentPage - 1))
+                    "‹"
+                    :: (paginationWindow currentPage numberOfPages
+                      |> List.map
+                          (\item -> case item of
+                              Just pageNumber ->
+                                pageButton
+                                  (pageNumber == currentPage)
+                                  False
+                                  (SelectedPage pageNumber)
+                                  (String.fromInt pageNumber)
+                              Nothing ->
+                                ellipsis
+                          )
                     )
-              )
-            ++ [ pageButton
-                False
-                (currentPage == numberOfPages)
-                (SelectedPage (currentPage + 1))
-                "›"
+                  ++ [ pageButton
+                      False
+                      (currentPage == numberOfPages)
+                      (SelectedPage (currentPage + 1))
+                      "›"
+                  ]
+                )
+            , span
+                [ css [ font_semibold, text_color theme.textSecondary ] ]
+                [ text
+                    ("Results: "
+                      ++ String.fromInt firstResult
+                      ++ " - "
+                      ++ String.fromInt lastResult
+                      ++ " of "
+                      ++ String.fromInt totalCount
+                    )
+                ]
             ]
-          )
+
+
+{-| Page numbers to display, with `Nothing` marking an ellipsis gap.
+Always keeps the first and last page plus a small window around the
+current page, e.g. `1 … 4 5 6 … 10`.
+-}
+paginationWindow : Int -> Int -> List (Maybe Int)
+paginationWindow current total =
+  let
+    windowSize =
+      3
+
+    start =
+      clamp 1 (Basics.max 1 (total - windowSize + 1)) (current - 1)
+
+    end =
+      Basics.min (start + windowSize - 1) total
+
+    numbers =
+      (1 :: List.range start end ++ [ total ])
+        |> dedupeSorted
+  in
+  numbers
+    |> List.foldr
+        (\n acc -> case acc of
+            (Just next) :: _ ->
+              if next - n > 1
+                then Just n :: Nothing :: acc
+                else Just n :: acc
+            _ ->
+              Just n :: acc
+        )
+        []
+
+
+{-| Drop consecutive duplicates from an ascending list.
+-}
+dedupeSorted : List Int -> List Int
+dedupeSorted =
+  List.foldr
+    (\x acc -> case acc of
+        y :: _ ->
+          if x == y
+            then acc
+            else x :: acc
+        [] ->
+          [ x ]
+    )
+    []
 
 
 formatGqlErrors : Theme -> List GraphQL.Error -> Html msg

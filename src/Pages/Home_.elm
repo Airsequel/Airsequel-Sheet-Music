@@ -487,9 +487,7 @@ viewSong theme song =
                 , justify_center
                 ]
             ]
-            [ if song.filetypes == Just "pdf"
-              then span [ buttonStyle theme [ invisible ] ] [ text "X" ]
-              else a
+            [ a
                 [ href <|
                     "/songs/horizontal/"
                     ++ String.fromInt song.rowid

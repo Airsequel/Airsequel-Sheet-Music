@@ -248,11 +248,9 @@ viewSong theme readOnlyId song =
             in
             div
               []
-              [ -- The horizontal view only makes sense for image pages,
-              -- PDFs are rendered in an iframe in the vertical view
-              if List.isEmpty sheetFiles
-                then text ""
-                else a
+              [ -- Both image pages and PDFs (rendered page by page via
+              -- pdf.js) support the horizontal and vertical views
+              a
                   [ href
                       ("/songs/horizontal/"
                         ++ String.fromInt song.rowid

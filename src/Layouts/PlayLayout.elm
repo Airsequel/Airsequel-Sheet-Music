@@ -13,8 +13,9 @@ import GraphQL
 import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
-import Html.Styled.Events exposing (onClick)
+import Html.Styled.Events exposing (on, onClick)
 import Html.Styled.Keyed as Keyed
+import Json.Decode
 import Layout exposing (Layout)
 import Maybe exposing (withDefault)
 import Route exposing (Route)
@@ -83,6 +84,7 @@ type alias Model =
   , showDividers : Bool
   , metronomeBpm : Maybe Int-- Nothing = use the tempo of the song
   , metronomeRunning : Bool
+  , pdfPages : Dict.Dict String Int-- PDF content URL -> page count
   }
 
 
@@ -198,6 +200,7 @@ init props sharedModel _ =
     , showDividers = settings.showDividers
     , metronomeBpm = settings.metronomeBpm
     , metronomeRunning = False
+    , pdfPages = Dict.empty
     }
   , Effect.none
   )
@@ -215,6 +218,8 @@ type Msg
   | SetMetronomeBpm Int
   | ToggleMetronome
   | ToggleAudio Int
+  | GotPdfPageCount String Int -- URL, page count
+
 
 
 update : Props -> Msg -> Model -> ( Model, Effect Msg )
@@ -271,6 +276,10 @@ update props msg model =
         }
       , Effect.none
       )
+    GotPdfPageCount url numPages ->
+      ( { model | pdfPages = Dict.insert url numPages model.pdfPages }
+      , Effect.none
+      )
 
 
 subscriptions : Model -> Sub Msg
@@ -280,20 +289,19 @@ subscriptions _ =
 
 -- VIEW
 
-
-viewImage : Song -> ReadDirection -> Model -> String -> Int -> File -> Html msg
-viewImage song readDirection model readOnlyId index file =
+{-| Page chrome (page numbers, heading, dividers, color scheme) shared
+by image pages and rendered PDF pages. `leaf` is the actual page content
+(an `<img>` for images, a `<pdf-page>` canvas for PDFs).
+-}
+viewPageFrame :
+  Song -> ReadDirection -> Model -> Int -> Int -> Html msg -> Html msg
+viewPageFrame song readDirection model numOfPages index leaf =
   let
     pageNumHeight =
       Css.rem 2
 
     headerHeight =
       Css.rem 5
-
-    numOfPages =
-      song.files
-        |> List.filter Types.File.isImage
-        |> List.length
 
     showPageNumbers =
       resolveShowPageNumbers model numOfPages
@@ -382,27 +390,74 @@ viewImage song readDirection model readOnlyId index file =
                 else [ h_full ]
             )
         ]
-        [ img
-            [ src (fileContentUrl readOnlyId file.rowid)
-            , css <|
-                case readDirection of
-                  ReadHorizontal ->
-                    [ block -- Prevent wide images from expanding too much
-                    , Css.maxWidth (Css.rem model.pageMaxWidth) -- Prevent image from losing aspect ratio
-                    , object_contain
-                    , if numOfPages > 1
-                      then h_full
-                      else Css.batch
-                        [ max_w_full
-                        , max_h_full
-                        ]
-                    ]
-                  ReadVertical ->
-                    [ block, w_full, max_w_6xl, self_center ]
-            ]
-            []
-        ]
+        [ leaf ]
     ]
+
+
+viewImage : Song -> ReadDirection -> Model -> String -> Int -> File -> Html msg
+viewImage song readDirection model readOnlyId index file =
+  let
+    numOfPages =
+      song.files
+        |> List.filter Types.File.isImage
+        |> List.length
+
+    leaf =
+      img
+        [ src (fileContentUrl readOnlyId file.rowid)
+        , css <|
+            case readDirection of
+              ReadHorizontal ->
+                [ block -- Prevent wide images from expanding too much
+                , Css.maxWidth (Css.rem model.pageMaxWidth) -- Prevent image from losing aspect ratio
+                , object_contain
+                , if numOfPages > 1
+                  then h_full
+                  else Css.batch
+                    [ max_w_full
+                    , max_h_full
+                    ]
+                ]
+              ReadVertical ->
+                [ block, w_full, max_w_6xl, self_center ]
+        ]
+        []
+  in
+  viewPageFrame song readDirection model numOfPages index leaf
+
+
+{-| One rendered page of a PDF, displayed exactly like an image page.
+The `<pdf-page>` custom element (see interop.js) draws the page onto a
+canvas; sizing is handled there from these attributes so it matches the
+corresponding `<img>` styling. `index` is 0-based, PDF pages are 1-based.
+-}
+viewPdfPage : Song -> ReadDirection -> Model -> String -> Int -> Int -> Html msg
+viewPdfPage song readDirection model url numOfPages index =
+  let
+    leaf =
+      node
+        "pdf-page"
+        [ attribute "url" url
+        , attribute "page" (String.fromInt (index + 1))
+        , attribute "direction" <|
+            case readDirection of
+              ReadHorizontal ->
+                "horizontal"
+              ReadVertical ->
+                "vertical"
+        , attribute "max-width" (String.fromFloat model.pageMaxWidth)
+        , attribute
+            "multipage"
+            (if numOfPages > 1
+                then "true"
+                else "false"
+            ) -- The host generates no box of its own, so the canvas it renders
+        -- participates directly in the page-frame's flex layout.
+        , css [ Css.property "display" "contents" ]
+        ]
+        []
+  in
+  viewPageFrame song readDirection model numOfPages index leaf
 
 
 getSidebar : Shared.Model -> Model -> String -> String -> Int -> Int -> List File -> Html Msg
@@ -740,33 +795,12 @@ viewSong sharedModel readDirection model readOnlyId song =
       div
         [ css [ text_center, font_sans, pt_8 ] ]
         content
-  in
-  if List.isEmpty sheetFiles
-    then case List.filter Types.File.isPdf song.files of
-      [file] ->
-        divImages <|
-          [ iframe
-              [ src (fileContentUrl readOnlyId file.rowid)
-              , css [ w_full, h_full, border_none ]
-              ]
-              []
-          ]
-      _ :: _ ->
-        divCenter [ text "Does not support more than one PDF per song" ]
-      [] ->
-        divCenter [ text "No files" ]
-    else
-      let
-        pageImages =
-          sheetFiles
-            |> List.indexedMap
-                (viewImage
-                    song
-                    readDirection
-                    model
-                    readOnlyId
-                )
-      in
+
+    -- Arrange already-rendered pages: in the horizontal view alongside
+    -- the sidebar, in the vertical view as a plain stack. Shared by
+    -- image pages and rendered PDF pages.
+    arrangePages : Int -> List (Html Msg) -> Html Msg
+    arrangePages numOfPages pages =
       divImages <|
         case readDirection of
           ReadHorizontal ->
@@ -775,7 +809,7 @@ viewSong sharedModel readDirection model readOnlyId song =
                 model
                 readOnlyId
                 (String.fromInt song.rowid)
-                (List.length sheetFiles)
+                numOfPages
                 (resolveMetronomeBpm model song)
                 (List.filter Types.File.isAudio song.files)
             , div
@@ -788,10 +822,60 @@ viewSong sharedModel readDirection model readOnlyId song =
                         else []
                     )
                 ]
-                pageImages
+                pages
             ]
           ReadVertical ->
-            pageImages
+            pages
+
+    -- Hidden element that loads the PDF and reports its page count, so
+    -- Elm can mount one <pdf-page> per page (see interop.js).
+    pdfDocLoader : String -> Html Msg
+    pdfDocLoader url =
+      node
+        "pdf-doc"
+        [ attribute "url" url
+        , on "numpages" <|
+            Json.Decode.map
+              (GotPdfPageCount url)
+              (Json.Decode.at [ "detail", "numPages" ] Json.Decode.int)
+        , css [ Css.property "display" "none" ]
+        ]
+        []
+  in
+  if List.isEmpty sheetFiles
+    then case List.filter Types.File.isPdf song.files of
+      [file] ->
+        let
+          url =
+            fileContentUrl readOnlyId file.rowid
+        in
+        case Dict.get url model.pdfPages of
+          Nothing ->
+            div
+              [ css [ h_full ] ]
+              [ pdfDocLoader url, divCenter [ text "Loading PDF …" ] ]
+          Just 0 ->
+            div
+              [ css [ h_full ] ]
+              [ pdfDocLoader url, divCenter [ text "Could not load PDF" ] ]
+          Just numPages ->
+            div
+              [ css [ h_full ] ]
+              [ pdfDocLoader url
+              , arrangePages numPages <|
+                  (List.range 0 (numPages - 1)
+                    |> List.map
+                        (viewPdfPage song readDirection model url numPages)
+                  )
+              ]
+      _ :: _ ->
+        divCenter [ text "Does not support more than one PDF per song" ]
+      [] ->
+        divCenter [ text "No files" ]
+    else arrangePages (List.length sheetFiles) <|
+      (sheetFiles
+        |> List.indexedMap (viewImage song readDirection model readOnlyId)
+      )
 
 
 viewPages : Props -> Shared.Model -> Model -> Song -> Html Msg
@@ -807,9 +891,7 @@ viewPages settings sharedModel model song =
           ReadHorizontal ->
             h_full
           ReadVertical ->
-            if List.any Types.File.isPdf song.files
-              then h_full
-              else w_full
+            w_full
         , case model.colorScheme of
           Light ->
             bg_color white

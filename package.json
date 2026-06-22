@@ -3,5 +3,8 @@
     "elm-format": "^0.8.7",
     "elm-land": "^0.20.1",
     "elm-review": "^2.13.2"
+  },
+  "dependencies": {
+    "pdfjs-dist": "^6.0.227"
   }
 }

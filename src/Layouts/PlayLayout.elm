@@ -439,6 +439,7 @@ viewPdfPage song readDirection model url numOfPages index =
         "pdf-page"
         [ attribute "url" url
         , attribute "page" (String.fromInt (index + 1))
+        , attribute "count" (String.fromInt numOfPages)
         , attribute "direction" <|
             case readDirection of
               ReadHorizontal ->

@@ -64,7 +64,7 @@ if (!customElements.get("pdf-doc")) {
 if (!customElements.get("pdf-page")) {
   customElements.define("pdf-page", class extends HTMLElement {
     static get observedAttributes () {
-      return ["url", "page", "direction", "max-width", "multipage"]
+      return ["url", "page", "count", "direction", "max-width", "multipage"]
     }
 
     connectedCallback () {
@@ -133,13 +133,29 @@ if (!customElements.get("pdf-page")) {
       try {
         const pdf = await loadPdf(url)
         const page = await pdf.getPage(pageNum)
-        // Render above CSS size so the page stays crisp when zoomed in,
-        // but cap the longest side so multi-page PDFs don't exhaust memory.
+        // Render above CSS size so the page stays crisp when zoomed in, but
+        // bound the resolution three ways so many pages can be mounted at
+        // once: by device pixels, by longest side, and by a total canvas
+        // budget shared across all the document's pages. Every page's canvas
+        // stays mounted simultaneously, and browsers (notably WebKit) cap
+        // total 2D-canvas backing-store memory per tab and silently blank the
+        // least-recently-used canvases once that cap is exceeded — so without
+        // the budget a long PDF loses arbitrary middle pages.
         const base = page.getViewport({ scale: 1 })
         const maxSide = 2400
+        // ~160 MB of RGBA backing store (4 bytes/pixel) across all pages,
+        // comfortably under the typical per-tab cap.
+        const totalPixelBudget = 40_000_000
+        const count = Math.max(
+          1,
+          Number.parseInt(this.getAttribute("count"), 10) || 1
+        )
+        const budgetScale =
+          Math.sqrt(totalPixelBudget / count / (base.width * base.height))
         const scale = Math.min(
           2 * (window.devicePixelRatio || 1),
-          maxSide / Math.max(base.width, base.height)
+          maxSide / Math.max(base.width, base.height),
+          budgetScale
         )
         const viewport = page.getViewport({ scale })
         const canvas = document.createElement("canvas")

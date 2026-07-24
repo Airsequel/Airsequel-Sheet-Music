@@ -9,6 +9,7 @@ import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (onClick, onInput, onSubmit)
 import MultiSelect
+import Nav
 import Page exposing (Page)
 import Route exposing (Route)
 import Set
@@ -22,14 +23,13 @@ import Shared.Model
     )
 import Shared.Msg exposing (Msg)
 import SmartSelect.Settings as SmartSettings
-import Svg.Styled as Svg
-import Svg.Styled.Attributes exposing (d, fill, viewBox)
+import SongsTable
 import Tailwind.Breakpoints exposing (..)
 import Tailwind.Theme
 import Tailwind.Utilities exposing (..)
 import Theme exposing (Theme)
 import Types.Song exposing (Song)
-import Utils exposing (addStarIf, arrowIconVert, host, viewHttpError)
+import Utils exposing (host, viewHttpError)
 import View exposing (View)
 
 
@@ -279,21 +279,6 @@ uniqueInstrumentations songs =
 
 
 -- VIEW
-
-
-buttonStyle : Theme -> List Css.Style -> Attribute msg
-buttonStyle theme add =
-  css <|
-    [ inline_block
-    , bg_color theme.bgButton
-    , text_color theme.textOnAccent
-    , rounded
-    , w_6
-    , h_6
-    ]
-    ++ add
-
-
 type SubmitButtonOption
   = HasSubmitButton
   | NoSubmitButton
@@ -446,125 +431,9 @@ viewGettingStarted theme sharedModel model =
   ]
 
 
-viewSong : Theme -> Song -> Html msg
-viewSong theme song =
-  let
-    tdSty additions =
-      td
-        [ css <|
-            [ border_x_4
-            , border_color theme.bgPanel
-            , px_2
-            , py_1
-            ]
-            ++ additions
-        ]
-  in
-  tr
-    []
-    [ tdSty
-        []
-        [ text <| Maybe.withDefault "" song.interpreter
-        ]
-    , tdSty
-        []
-        [ text <| addStarIf song.isFavorite
-        , a
-            [ href <| "/songs/" ++ String.fromInt song.rowid
-            , css [ underline, text_color theme.textLink ]
-            ]
-            [ text song.name
-            ]
-        ]
-    , tdSty
-        [ px_1 ]
-        [ if song.numberOfFiles == 0
-          then text ""
-          else div
-            [ css
-                [ flex
-                , gap_1
-                , justify_center
-                ]
-            ]
-            [ a
-                [ href <|
-                    "/songs/horizontal/"
-                    ++ String.fromInt song.rowid
-                , buttonStyle theme [ p_0_dot_5 ]
-                ]
-                [ arrowIconVert [ rotate_90 ] ]
-            , a
-                [ href <|
-                    "/songs/vertical/"
-                    ++ String.fromInt song.rowid
-                , buttonStyle theme [ p_0_dot_5 ]
-                ]
-                [ arrowIconVert [] ]
-            ]
-        ]
-    , tdSty
-        []
-        [ text <|
-            if song.filetypes == Just "pdf"
-              then ""
-              else String.fromInt song.numberOfFiles
-        ]
-    , tdSty [] [ text <| Maybe.withDefault "" song.instrumentation ]
-    , tdSty [ text_center ] [ text <| Maybe.withDefault "" song.tempo ]
-    , tdSty [ text_center ] [ text <| Maybe.withDefault "" song.key ]
-    ]
-
-
 viewSongsTable : Theme -> Bool -> List Song -> Html Msg
 viewSongsTable theme isLoading songs =
   let
-    documentIcon styles =
-      Svg.svg
-        [ viewBox "0 0 24 24"
-        , fill "currentColor"
-        , css styles
-        ]
-        [ Svg.path
-            [ d <|
-                "M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2"
-                ++ "h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4"
-                ++ "h7v5h5v11H6zm10-9h-4v3.88"
-                ++ "c-.36-.24-.79-.38-1.25-.38-1.24 0"
-                ++ "-2.25 1.01-2.25 2.25"
-                ++ "S9.51 19 10.75 19 13 17.99 13 16.75"
-                ++ "V13h3v-2z"
-            ]
-            []
-        ]
-
-    thSty additions =
-      th
-        [ css <|
-            [ border_x_4
-            , border_color theme.bgPanel
-            , px_2
-            , py_1
-            ]
-            ++ additions
-        ]
-
-    tableHead =
-      thead [] <|
-        [ tr
-            [ css [ bg_color theme.bgAccentMuted ] ]
-            [ thSty [] [ text "Interpreter" ]
-            , thSty [] [ text "Song" ]
-            , thSty [] [ text "Open" ]
-            , thSty
-                [ py_0, px_0_dot_5 ]
-                [ documentIcon [ inline_block, h_6 ] ]
-            , thSty [] [ text "Instrumentation" ]
-            , thSty [] [ text "Tempo" ]
-            , thSty [] [ text "Key" ]
-            ]
-        ]
-
     bodyRows =
       if isLoading
         then [ tr
@@ -581,12 +450,12 @@ viewSongsTable theme isLoading songs =
             favoriteSongs =
               songs
                 |> List.filter .isFavorite
-                |> List.map (viewSong theme)
+                |> List.map (SongsTable.viewSong theme)
 
             otherSongs =
               songs
                 |> List.filter (not << .isFavorite)
-                |> List.map (viewSong theme)
+                |> List.map (SongsTable.viewSong theme)
 
             separator =
               if List.isEmpty favoriteSongs || List.isEmpty otherSongs
@@ -599,7 +468,7 @@ viewSongsTable theme isLoading songs =
   in
   Html.Styled.table
     [ css [ w_full, bg_color theme.bgPanel ] ]
-    [ tableHead
+    [ SongsTable.tableHead theme
     , tbody [] bodyRows
     ]
 
@@ -1234,6 +1103,7 @@ view sharedModel model =
                         ]
                   , colorPrefControl theme darkMode sharedModel.colorPref
                   ]
+                  :: renderIf idIsProvided (Nav.viewTabs theme Nav.SongsTab)
                   :: viewToolbar theme darkMode model sharedModel
               )
           , div

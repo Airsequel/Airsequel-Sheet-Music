@@ -7,6 +7,8 @@ module Shared exposing
   , update
   , subscriptions
   , getSongWithFiles
+  , getPlaylist
+  , getSongsByIds
   )
 
 {-|
@@ -15,6 +17,7 @@ module Shared exposing
 @docs Model, Msg
 @docs init, update, subscriptions
 @docs getSongWithFiles
+@docs getPlaylist, getSongsByIds
 
 -}
 
@@ -29,6 +32,7 @@ import Shared.Model exposing (ColorPref(..))
 import Shared.Msg
 import Task
 import Types.FilterOptions exposing (filterOptionsDecoder)
+import Types.Playlist exposing (playlistsDecoder)
 import Types.Song exposing (songsDecoder, songsPageDecoder)
 import Types.SongSettings exposing (SongSettings)
 import Utils exposing (host)
@@ -208,6 +212,123 @@ getFilterOptions readonlyId =
       }
 
 
+{-| Fetch all playlists (name, song rowids, cover image) from the
+`playlists` table. The list is small, so there is no pagination.
+-}
+getPlaylists : String -> Effect Msg
+getPlaylists readonlyId =
+  Effect.sendCmd <|
+    GraphQL.run
+      { query = """
+                query Playlists {
+                    playlists {
+                        rowid
+                        name
+                        songs
+                        cover_image
+                    }
+                }
+                """
+      , decoder = playlistsDecoder
+      , root = "playlists"
+      , url = host
+        ++ "/readonly/"
+        ++ readonlyId
+        ++ "/graphql"
+      , headers = []
+      , on = Shared.Msg.OnPlaylists
+      , variables = Nothing
+      }
+
+
+{-| Fetch a single playlist by its rowid (for the playlist detail page).
+-}
+getPlaylist :
+  String
+  -> String
+  -> (GraphQL.Response (List Types.Playlist.Playlist) -> msg)
+  -> Effect msg
+getPlaylist readonlyId playlistId msg =
+  Effect.sendCmd <|
+    GraphQL.run
+      { query = """
+            query Playlist {
+                playlists (
+                    filter: { rowid: { eq: """
+        ++ playlistId
+        ++ """ } }
+                ) {
+                    rowid
+                    name
+                    songs
+                    cover_image
+                }
+            }
+            """
+      , decoder = playlistsDecoder
+      , root = "playlists"
+      , url = host
+        ++ "/readonly/"
+        ++ readonlyId
+        ++ "/graphql"
+      , headers = []
+      , on = msg
+      , variables = Nothing
+      }
+
+
+{-| Fetch the songs whose rowid is in the given list (a playlist's songs).
+The result order is not guaranteed by the `in` filter, so callers that
+need the playlist's own order must reorder client-side.
+-}
+getSongsByIds :
+  String
+  -> List Int
+  -> (GraphQL.Response (List Types.Song.Song) -> msg)
+  -> Effect msg
+getSongsByIds readonlyId songIds msg =
+  let
+    idsStr =
+      "["
+      ++ (songIds |> List.map String.fromInt |> String.join ", ")
+      ++ "]"
+  in
+  Effect.sendCmd <|
+    GraphQL.run
+      { query = """
+            query PlaylistSongs {
+                songs_json (
+                    filter: { rowid: { in: """
+        ++ idsStr
+        ++ """ } }
+                ) {
+                    rowid
+                    name
+                    instrumentation
+                    style
+                    tempo
+                    key
+                    interpreter
+                    composer
+                    arranger
+                    numberOfFiles
+                    filetypes
+                    is_favorite
+                }
+            }
+            """
+      , decoder = songsDecoder False
+      , root = "songs_json"
+      , url = host
+        ++ "/readonly/"
+        ++ readonlyId
+        ++ "/graphql"
+      , headers = []
+      , on = msg
+      , variables = Nothing
+      }
+
+
 getSongWithFiles :
   String
   -> String
@@ -300,6 +421,7 @@ init flagsResult _ =
       , songsFilters = Shared.Model.emptyFilters
       , hasNextSongsPage = False
       , filterOptions = Nothing
+      , playlistsResult = Ok { data = Nothing, errors = Nothing }
       , colorPref = Auto
       , systemDark = False
       , horizontalSongSettings = Dict.empty
@@ -321,6 +443,7 @@ init flagsResult _ =
           , Effect.batch
               [ getSongs readonlyId Nothing Shared.Model.emptyFilters 1
               , getFilterOptions readonlyId
+              , getPlaylists readonlyId
               ]
           )
         Nothing ->
@@ -346,11 +469,13 @@ update _ msg model =
           , songsSearch = Nothing
           , songsFilters = Shared.Model.emptyFilters
           , filterOptions = Nothing
+          , playlistsResult = Ok { data = Nothing, errors = Nothing }
         }
       , Effect.batch
           [ Effect.saveReadonlyId readonlyId
           , getSongs readonlyId Nothing Shared.Model.emptyFilters 1
           , getFilterOptions readonlyId
+          , getPlaylists readonlyId
           ]
       )
     Shared.Msg.SelectedSongsPage page ->
@@ -467,6 +592,10 @@ update _ msg model =
           , songsLoading = False
           , hasNextSongsPage = numberOfLoadedSongs > Shared.Model.songsPerPage
         }
+      , Effect.none
+      )
+    Shared.Msg.OnPlaylists playlistsResult ->
+      ( { model | playlistsResult = playlistsResult }
       , Effect.none
       )
     Shared.Msg.OnFilterOptions optionsResult ->

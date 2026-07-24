@@ -11,6 +11,7 @@ module Shared.Model exposing
 import Dict exposing (Dict)
 import GraphQL
 import Types.FilterOptions exposing (FilterOptions)
+import Types.Playlist exposing (Playlist)
 import Types.Song exposing (SongsPage)
 import Types.SongSettings exposing (SongSettings)
 
@@ -38,6 +39,7 @@ type alias Model =
   , songsFilters : Filters
   , hasNextSongsPage : Bool
   , filterOptions : Maybe FilterOptions
+  , playlistsResult : GraphQL.Response (List Playlist)
   , colorPref : ColorPref
   , systemDark : Bool
   , horizontalSongSettings : Dict String SongSettings

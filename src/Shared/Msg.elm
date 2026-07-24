@@ -3,6 +3,7 @@ module Shared.Msg exposing (Msg(..))
 import GraphQL
 import Shared.Model exposing (ColorPref, Filters)
 import Types.FilterOptions exposing (FilterOptions)
+import Types.Playlist exposing (Playlist)
 import Types.Song exposing (SongsPage)
 import Types.SongSettings exposing (SongSettings)
 
@@ -17,6 +18,7 @@ own file, so they can be imported by `Effect.elm`
 type Msg
   = OnSongs (GraphQL.Response SongsPage)
   | OnFilterOptions (GraphQL.Response FilterOptions)
+  | OnPlaylists (GraphQL.Response (List Playlist))
   | SubmittedReadonlyId String
   | SelectedSongsPage Int
   | EnteredSongsSearch String

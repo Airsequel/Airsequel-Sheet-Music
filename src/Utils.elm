@@ -1,6 +1,7 @@
 module Utils exposing
   ( addStarIf
   , arrowIconVert
+  , columnFileUrl
   , fileContentUrl
   , host
   , viewGraphQLErrors
@@ -23,15 +24,29 @@ host =
   "https://www.airsequel.com"
 
 
+{-| URL of a blob-file cell in Airsequel's file storage, keyed by
+table, column, and rowid. Built from the 16-char read-only ID so the
+URL is publicly accessible (the URL GraphQL returns embeds the private
+database ID instead and only works when authenticated).
+-}
+columnFileUrl : String -> String -> String -> Int -> String
+columnFileUrl readOnlyId table column rowid =
+  host
+  ++ "/readonly/"
+  ++ readOnlyId
+  ++ "/tables/"
+  ++ table
+  ++ "/columns/"
+  ++ column
+  ++ "/files/rowid/"
+  ++ String.fromInt rowid
+
+
 {-| URL of a file's content (blob) in Airsequel's file storage.
 -}
 fileContentUrl : String -> Int -> String
 fileContentUrl readOnlyId rowid =
-  host
-  ++ "/readonly/"
-  ++ readOnlyId
-  ++ "/tables/files/columns/content/files/rowid/"
-  ++ String.fromInt rowid
+  columnFileUrl readOnlyId "files" "content" rowid
 
 
 viewHttpError : Http.Error -> Html msg

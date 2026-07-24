@@ -12,7 +12,9 @@ import Html.Styled exposing (a, button, div, h1, main_, nav, span, text, toUnsty
 import Html.Styled.Attributes exposing (..)
 import Html.Styled.Events exposing (onClick)
 import Layout exposing (Layout)
+import Nav
 import Route exposing (Route)
+import Route.Path
 import Shared
 import Shared.Model exposing (ColorPref(..))
 import Shared.Msg
@@ -27,13 +29,22 @@ type alias Props =
 
 
 layout : Props -> Shared.Model -> Route () -> Layout () Model Msg contentMsg
-layout settings sharedModel _ =
+layout settings sharedModel route =
   Layout.new
     { init = init
     , update = update
-    , view = view settings sharedModel
+    , view = view settings sharedModel (activeTab route)
     , subscriptions = subscriptions
     }
+
+
+activeTab : Route () -> Nav.Tab
+activeTab route =
+  case route.path of
+    Route.Path.Playlists ->
+      Nav.PlaylistsTab
+    _ ->
+      Nav.SongsTab
 
 
 -- MODEL
@@ -121,12 +132,13 @@ colorPrefControl theme darkMode current =
 view :
   Props
   -> Shared.Model
+  -> Nav.Tab
   -> { toContentMsg : Msg -> mainMsg
   , content : View mainMsg
   , model : Model
   }
   -> View mainMsg
-view settings sharedModel { toContentMsg, content } =
+view settings sharedModel tab { toContentMsg, content } =
   let
     darkMode =
       Shared.Model.isDark sharedModel
@@ -152,31 +164,34 @@ view settings sharedModel { toContentMsg, content } =
           [ Css.Global.global globalStyles
           , Css.Global.global (Theme.globalSnippets darkMode)
           , nav
-              [ css
-                  [ flex
-                  , flex_col
-                  , sm [ flex_row ]
-                  , items_center
-                  , gap_3
-                  , pb_8
-                  ]
-              ]
-              [ h1
+              [ css [ flex, flex_col, gap_4, pb_8 ] ]
+              [ div
                   [ css
-                      [ font_bold
-                      , text_3xl
-                      , mr_4
-                      , inline_block
-                      , text_color theme.textLink
-                      , grow
+                      [ flex
+                      , flex_col
+                      , sm [ flex_row ]
+                      , items_center
+                      , gap_3
                       ]
                   ]
-                  [ a
-                      [ href "/" ]
-                      [ text "Airsequel Sheet Music" ]
+                  [ h1
+                      [ css
+                          [ font_bold
+                          , text_3xl
+                          , mr_4
+                          , inline_block
+                          , text_color theme.textLink
+                          , grow
+                          ]
+                      ]
+                      [ a
+                          [ href "/" ]
+                          [ text "Airsequel Sheet Music" ]
+                      ]
+                  , Html.Styled.map toContentMsg <|
+                      colorPrefControl theme darkMode sharedModel.colorPref
                   ]
-              , Html.Styled.map toContentMsg <|
-                  colorPrefControl theme darkMode sharedModel.colorPref
+              , Nav.viewTabs theme tab
               ]
           , div
               []

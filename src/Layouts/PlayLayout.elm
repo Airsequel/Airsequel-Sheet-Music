@@ -176,19 +176,26 @@ toSongSettings model =
   }
 
 
+{-| Settings are stored per song *and* per reading direction,
+as the two views are styled independently
+-}
+settingsKey : ReadDirection -> String -> String
+settingsKey readDirection songId =
+  case readDirection of
+    ReadHorizontal ->
+      "h:" ++ songId
+    ReadVertical ->
+      "v:" ++ songId
+
+
 init : Props -> Shared.Model -> () -> ( Model, Effect Msg )
 init props sharedModel _ =
   let
-    -- Stored settings only apply to the horizontal view;
-    -- the vertical view may get its own styling options later
     settings =
-      case props.readDirection of
-        ReadHorizontal ->
-          Dict.get props.songId sharedModel.horizontalSongSettings
-            |> Maybe.withDefault
-                (defaultSettings sharedModel props.readDirection)
-        ReadVertical ->
-          defaultSettings sharedModel props.readDirection
+      sharedModel.songSettings
+        |> Dict.get (settingsKey props.readDirection props.songId)
+        |> Maybe.withDefault
+            (defaultSettings sharedModel props.readDirection)
   in
   ( { -- alignment = AlignTop,
     colorScheme = settings.colorScheme
@@ -226,19 +233,15 @@ update : Props -> Msg -> Model -> ( Model, Effect Msg )
 update props msg model =
   let
     -- Apply a settings change and store it for this song
-    -- in local storage (only in the horizontal view)
+    -- and reading direction in local storage
     persist : Model -> ( Model, Effect Msg )
     persist newModel =
       ( newModel
-      , case props.readDirection of
-          ReadHorizontal ->
-            Effect.sendSharedMsg
-              (Shared.Msg.SetHorizontalSongSettings
-                  props.songId
-                  (toSongSettings newModel)
-              )
-          ReadVertical ->
-            Effect.none
+      , Effect.sendSharedMsg
+          (Shared.Msg.SetSongSettings
+              (settingsKey props.readDirection props.songId)
+              (toSongSettings newModel)
+          )
       )
   in
   case msg of
@@ -418,7 +421,13 @@ viewImage song readDirection model readOnlyId index file =
                     ]
                 ]
               ReadVertical ->
-                [ block, w_full, max_w_6xl, self_center ]
+                [ block
+                , w_full
+                , Css.maxWidth (Css.rem model.pageMaxWidth)
+                , if model.centerPages
+                  then self_center
+                  else self_start
+                ]
         ]
         []
   in
@@ -447,6 +456,12 @@ viewPdfPage song readDirection model url numOfPages index =
                 "vertical"
         , attribute "max-width" (String.fromFloat model.pageMaxWidth)
         , attribute
+            "center"
+            (if model.centerPages
+                then "true"
+                else "false"
+            )
+        , attribute
             "multipage"
             (if numOfPages > 1
                 then "true"
@@ -460,11 +475,26 @@ viewPdfPage song readDirection model url numOfPages index =
   viewPageFrame song readDirection model numOfPages index leaf
 
 
-getSidebar : Shared.Model -> Model -> String -> String -> Int -> Int -> List File -> Html Msg
-getSidebar sharedModel model readOnlyId songId numOfPages metronomeBpm audioFiles =
+{-| The controls of the play view: a sidebar to the left of the pages in
+the horizontal view, a header bar above them in the vertical view.
+-}
+viewControls :
+  Shared.Model
+  -> ReadDirection
+  -> Model
+  -> String
+  -> String
+  -> Int
+  -> Int
+  -> List File
+  -> Html Msg
+viewControls sharedModel readDirection model readOnlyId songId numOfPages metronomeBpm audioFiles =
   let
     theme =
       Theme.fromDarkMode (Shared.Model.isDark sharedModel)
+
+    isHeaderBar =
+      readDirection == ReadVertical
 
     colorScheme =
       model.colorScheme
@@ -476,20 +506,28 @@ getSidebar sharedModel model readOnlyId songId numOfPages metronomeBpm audioFile
         , bg_color theme.sidebarBtn
         , Css.hover [ bg_color theme.sidebarBtnHover ]
         , Css.active [ bg_color theme.sidebarBtnActive ]
-        , text_center
+        , text_center -- In the sidebar the column stretches the buttons,
+        -- in the header bar they need an explicit width
+        , if isHeaderBar
+          then Css.batch [ w_12, flex_shrink_0 ]
+          else Css.batch []
         ]
 
+    -- The selection marker sits on the outer edge of the bar
     markSelectedFor : a -> a -> Css.Style
     markSelectedFor reference actual =
       if reference == actual
         then Css.batch
-          [ border_l_4
-          , border_l_color orange_500
+          [ if isHeaderBar
+            then Css.batch [ border_t_4, border_t_color orange_500 ]
+            else Css.batch [ border_l_4, border_l_color orange_500 ]
           , border_solid
           , bg_color theme.sidebarBtnSelected
           ]
         else Css.batch
-          [ border_l_4
+          [ if isHeaderBar
+            then border_t_4
+            else border_l_4
           , border_solid
           , border_color transparent
           ]
@@ -639,8 +677,17 @@ getSidebar sharedModel model readOnlyId songId numOfPages metronomeBpm audioFile
           [ text "−" ]
       ]
 
+    -- Gap between groups of buttons
     placeholder =
-      [ div [ css [ h_3 ] ] [] ]
+      [ div
+          [ css
+              [ if isHeaderBar
+                then w_3
+                else h_3
+              ]
+          ]
+          []
+      ]
 
     metronomeControls =
       [ button
@@ -735,13 +782,28 @@ getSidebar sharedModel model readOnlyId songId numOfPages metronomeBpm audioFile
   div
     [ css
         [ flex
-        , flex_col
         , flex_shrink_0
-        , w_12
-        , h_full
-        , align_top
-        , gap_y_0_dot_5
         , bg_color theme.sidebarBg
+        , if isHeaderBar
+          then Css.batch
+            [ flex_row
+            , flex_wrap
+            , w_full
+            , items_stretch
+            , gap_x_0_dot_5
+            , gap_y_0_dot_5 -- Keep the controls in reach
+            -- while scrolling through the pages
+            , sticky
+            , top_0
+            , z_10
+            ]
+          else Css.batch
+            [ flex_col
+            , w_12
+            , h_full
+            , align_top
+            , gap_y_0_dot_5
+            ]
         ]
     ]
     (backButton
@@ -784,8 +846,13 @@ viewSong sharedModel readDirection model readOnlyId song =
                   --         self_end
                   ]
               ReadVertical ->
-                flex_col
-            , h_full
+                flex_col -- In the vertical view the pages sit below the header
+            -- bar and their height is determined by their content
+            , case readDirection of
+              ReadHorizontal ->
+                h_full
+              ReadVertical ->
+                Css.batch []
             ]
         ]
         content
@@ -796,22 +863,27 @@ viewSong sharedModel readDirection model readOnlyId song =
         [ css [ text_center, font_sans, pt_8 ] ]
         content
 
+    controls : Int -> Html Msg
+    controls numOfPages =
+      viewControls
+        sharedModel
+        readDirection
+        model
+        readOnlyId
+        (String.fromInt song.rowid)
+        numOfPages
+        (resolveMetronomeBpm model song)
+        (List.filter Types.File.isAudio song.files)
+
     -- Arrange already-rendered pages: in the horizontal view alongside
-    -- the sidebar, in the vertical view as a plain stack. Shared by
-    -- image pages and rendered PDF pages.
+    -- the sidebar, in the vertical view as a stack below the header bar.
+    -- Shared by image pages and rendered PDF pages.
     arrangePages : Int -> List (Html Msg) -> Html Msg
     arrangePages numOfPages pages =
-      divImages <|
-        case readDirection of
-          ReadHorizontal ->
-            [ getSidebar
-                sharedModel
-                model
-                readOnlyId
-                (String.fromInt song.rowid)
-                numOfPages
-                (resolveMetronomeBpm model song)
-                (List.filter Types.File.isAudio song.files)
+      case readDirection of
+        ReadHorizontal ->
+          divImages
+            [ controls numOfPages
             , div
                 [ css <|
                     [ flex, flex_row, h_full ]-- Auto margins center the pages when they are
@@ -824,8 +896,12 @@ viewSong sharedModel readDirection model readOnlyId song =
                 ]
                 pages
             ]
-          ReadVertical ->
-            pages
+        ReadVertical ->
+          div
+            [ css [ flex, flex_col, min_h_full ] ]
+            [ controls numOfPages
+            , divImages pages
+            ]
 
     -- Hidden element that loads the PDF and reports its page count, so
     -- Elm can mount one <pdf-page> per page (see interop.js).
@@ -889,9 +965,10 @@ viewPages settings sharedModel model song =
     (css
         [ case settings.readDirection of
           ReadHorizontal ->
-            h_full
+            h_full -- Scroll inside this container instead of the document,
+          -- so the sticky header bar stays visible
           ReadVertical ->
-            w_full
+            Css.batch [ w_full, h_full ]
         , case model.colorScheme of
           Light ->
             bg_color white

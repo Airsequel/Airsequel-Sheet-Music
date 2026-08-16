@@ -16,9 +16,10 @@ type ColorScheme
   | Sepia
 
 
-{-| Sidebar settings of the horizontal play view, stored per song
-in local storage under the `horizontalSongSettings` key.
-The vertical play view may get its own styling options later.
+{-| Settings of the play view's control bar, stored in local storage
+under the `songSettings` key, keyed by reading direction and song
+(e.g. "h:42" for the horizontal view of song 42), as both views
+are styled independently.
 
 `showPageNumbers` is `Nothing` as long as the user never toggled it,
 so the default (hide page numbers for songs with up to 2 pages)

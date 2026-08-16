@@ -42,7 +42,7 @@ type alias Model =
   , playlistsResult : GraphQL.Response (List Playlist)
   , colorPref : ColorPref
   , systemDark : Bool
-  , horizontalSongSettings : Dict String SongSettings
+  , songSettings : Dict String SongSettings
   }
 
 

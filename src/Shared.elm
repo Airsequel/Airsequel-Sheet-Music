@@ -378,7 +378,7 @@ type alias Flags =
   { readonlyId : Maybe String
   , colorPref : ColorPref
   , systemDark : Bool
-  , horizontalSongSettings : Dict String SongSettings
+  , songSettings : Dict String SongSettings
   }
 
 
@@ -394,7 +394,7 @@ decoder =
     -- Fall back to no stored settings if the data is missing or corrupt,
     -- so the other flags still get applied
     (Json.Decode.oneOf
-        [ Json.Decode.field "horizontalSongSettings" Types.SongSettings.dictDecoder
+        [ Json.Decode.field "songSettings" Types.SongSettings.dictDecoder
         , Json.Decode.succeed Dict.empty
         ]
     )
@@ -424,7 +424,7 @@ init flagsResult _ =
       , playlistsResult = Ok { data = Nothing, errors = Nothing }
       , colorPref = Auto
       , systemDark = False
-      , horizontalSongSettings = Dict.empty
+      , songSettings = Dict.empty
       }
   in
   case flagsResult of
@@ -434,7 +434,7 @@ init flagsResult _ =
           { emptyModel
             | colorPref = flags.colorPref
             , systemDark = flags.systemDark
-            , horizontalSongSettings = flags.horizontalSongSettings
+            , songSettings = flags.songSettings
           }
       in
       case flags.readonlyId of
@@ -617,13 +617,13 @@ update _ msg model =
       ( { model | systemDark = isDark }
       , Effect.none
       )
-    Shared.Msg.SetHorizontalSongSettings songId settings ->
+    Shared.Msg.SetSongSettings settingsKey settings ->
       let
-        newHorizontalSongSettings =
-          Dict.insert songId settings model.horizontalSongSettings
+        newSongSettings =
+          Dict.insert settingsKey settings model.songSettings
       in
-      ( { model | horizontalSongSettings = newHorizontalSongSettings }
-      , Effect.saveHorizontalSongSettings newHorizontalSongSettings
+      ( { model | songSettings = newSongSettings }
+      , Effect.saveSongSettings newSongSettings
       )
 
 

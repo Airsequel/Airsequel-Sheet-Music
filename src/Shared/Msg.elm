@@ -27,4 +27,4 @@ type Msg
   | ResetSongsSearchAndFilters
   | SetColorPref ColorPref
   | SystemDarkChanged Bool
-  | SetHorizontalSongSettings String SongSettings
+  | SetSongSettings String SongSettings

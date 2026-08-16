@@ -64,7 +64,9 @@ if (!customElements.get("pdf-doc")) {
 if (!customElements.get("pdf-page")) {
   customElements.define("pdf-page", class extends HTMLElement {
     static get observedAttributes () {
-      return ["url", "page", "count", "direction", "max-width", "multipage"]
+      return [
+        "url", "page", "count", "direction", "max-width", "multipage", "center"
+      ]
     }
 
     connectedCallback () {
@@ -75,7 +77,7 @@ if (!customElements.get("pdf-page")) {
       // Re-styling is cheap, but re-rendering the page is not, so only
       // the layout-affecting attributes restyle without a full re-render.
       if (name === "direction" || name === "max-width"
-          || name === "multipage") {
+          || name === "multipage" || name === "center") {
         this.styleCanvas()
       }
       else {
@@ -112,11 +114,12 @@ if (!customElements.get("pdf-page")) {
         }
       }
       else {
-        // Mirror the vertical <img>: full width, capped at max-w-6xl.
-        style.alignSelf = "center"
+        // Mirror the vertical <img>: full width, capped at max-width.
+        style.alignSelf =
+          this.getAttribute("center") === "false" ? "flex-start" : "center"
         style.width = "100%"
         style.height = "auto"
-        style.maxWidth = "72rem"
+        style.maxWidth = maxWidth ? maxWidth + "rem" : "72rem"
         style.maxHeight = "none"
       }
     }
@@ -235,19 +238,34 @@ export const flags = ({ env }) => {
     ? JSON.parse(stored)
     : "auto"
 
-  let horizontalSongSettings = {}
+  // Play view settings, keyed by reading direction and song id
+  // (e.g. "h:42" / "v:42")
+  let songSettings = null
   try {
-    horizontalSongSettings = JSON.parse(window.localStorage.horizontalSongSettings || "{}")
+    songSettings = JSON.parse(window.localStorage.songSettings || "null")
+    if (!songSettings) {
+      // Migrate settings from before the vertical view had its own:
+      // they were keyed by song id and only applied horizontally
+      const legacy = JSON.parse(
+        window.localStorage.horizontalSongSettings || "{}"
+      )
+      songSettings = Object.fromEntries(
+        Object.entries(legacy).map(([songId, settings]) =>
+          ["h:" + songId, settings]
+        )
+      )
+    }
   }
   catch (error) {
     // Corrupt data must not break startup; Elm falls back to defaults
+    songSettings = {}
   }
 
   return {
     readonlyId: JSON.parse(window.localStorage.readonlyId || null),
     colorPref: colorPref,
     systemDark: darkQuery.matches,
-    horizontalSongSettings: horizontalSongSettings
+    songSettings: songSettings
   }
 }
 

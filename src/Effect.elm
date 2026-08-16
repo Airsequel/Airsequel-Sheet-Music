@@ -10,7 +10,7 @@ port module Effect exposing
   , clearReadonlyId
   , saveReadonlyId
   , saveColorPref
-  , saveHorizontalSongSettings
+  , saveSongSettings
   , sendSharedMsg
   , map
   , toCmd
@@ -23,7 +23,7 @@ port module Effect exposing
 @docs sendCmd, sendMsg, sendSharedMsg
 @docs pushRoute, replaceRoute, loadExternalUrl
 @docs clearReadonlyId, saveReadonlyId, saveColorPref
-@docs saveHorizontalSongSettings
+@docs saveSongSettings
 
 @docs map, toCmd
 
@@ -84,10 +84,10 @@ saveColorPref pref =
     }
 
 
-saveHorizontalSongSettings : Dict String SongSettings -> Effect msg
-saveHorizontalSongSettings songSettings =
+saveSongSettings : Dict String SongSettings -> Effect msg
+saveSongSettings songSettings =
   SendToLocalStorage
-    { key = "horizontalSongSettings"
+    { key = "songSettings"
     , value = Types.SongSettings.encodeDict songSettings
     }
 

@@ -190,12 +190,19 @@ update msg model =
       )
     SubmittedReadonlyId ->
       let
+        -- Mobile keyboards (and pasting from the Airsequel UI) like to
+        -- add a trailing space or newline, which would otherwise fail
+        -- the length check below
+        readonlyIdMb =
+          model.partialReadonlyId
+            |> Maybe.map stripWhitespace
+
         lengthNot16 =
-          (model.partialReadonlyId |> Maybe.map String.length)
+          (readonlyIdMb |> Maybe.map String.length)
           /= Just 16
 
         stringNotEmpty =
-          (model.partialReadonlyId |> Maybe.map String.isEmpty)
+          (readonlyIdMb |> Maybe.map String.isEmpty)
           == Just False
       in
       if lengthNot16 && stringNotEmpty
@@ -219,7 +226,7 @@ update msg model =
               , Effect.none
               )
           in
-          case model.partialReadonlyId of
+          case readonlyIdMb of
             Nothing ->
               errorRes
             Just "" ->
@@ -229,6 +236,14 @@ update msg model =
               , SendSharedMsg <|
                   Shared.Msg.SubmittedReadonlyId val
               )
+
+
+{-| Read-only IDs never contain whitespace, so drop any that snuck in
+via copy-paste or a mobile keyboard.
+-}
+stripWhitespace : String -> String
+stripWhitespace =
+  String.filter (\char -> not (List.member char [ ' ', '\t', '\n', '\u{000D}' ]))
 
 
 -- SUBSCRIPTIONS
@@ -291,24 +306,82 @@ viewReadonlyIdForm :
   -> Model
   -> Html Msg
 viewReadonlyIdForm theme hasSubmitButton sharedModel model =
-  Html.Styled.form
-    [ onSubmit SubmittedReadonlyId
-    , css [ inline_block ]
+  div
+    [ css [ inline_block ] ]
+    [ Html.Styled.form
+        [ onSubmit SubmittedReadonlyId
+        , css [ inline_block ]
+        ]
+        (viewReadonlyIdFormFields theme hasSubmitButton sharedModel model)
+    , -- Rendered right below the form so the message is actually visible;
+    -- at the bottom of the page it sits several screens away on mobile
+    div [] (model.errors |> List.map (errorPara theme))
     ]
-    [ input
-        [ type_ "text"
-        , placeholder "Read-Only Database ID"
-        , value <|
-            case model.partialReadonlyId of
-              Just val ->
-                val
-              Nothing ->
-                case sharedModel.readonlyId of
-                  Just id ->
-                    id
-                  Nothing ->
-                    ""
-        , onInput EnteredReadonlyId
+
+
+errorPara : Theme -> String -> Html Msg
+errorPara theme errorTxt =
+  p
+    [ css
+        [ bg_color theme.bgError
+        , border
+        , border_solid
+        , border_color theme.borderError
+        , text_color theme.textError
+        , rounded
+        , px_4
+        , py_2
+        , mt_4
+        , max_w_xl
+        ]
+    ]
+    [ text errorTxt ]
+
+
+viewReadonlyIdFormFields :
+  Theme
+  -> SubmitButtonOption
+  -> Shared.Model
+  -> Model
+  -> List (Html Msg)
+viewReadonlyIdFormFields theme hasSubmitButton sharedModel model =
+  [ input
+      [ type_ "text"
+      , placeholder "Read-Only Database ID"
+      , value <|
+          case model.partialReadonlyId of
+            Just val ->
+              val
+            Nothing ->
+              case sharedModel.readonlyId of
+                Just id ->
+                  id
+                Nothing ->
+                  ""
+      , onInput EnteredReadonlyId
+      , -- iOS Safari otherwise capitalizes the first character and
+      -- autocorrects the ID into something else
+      attribute "autocapitalize" "none"
+      , attribute "autocorrect" "off"
+      , spellcheck False
+      , autocomplete False
+      , css
+          [ inline_block
+          , border
+          , border_solid
+          , border_color theme.border
+          , rounded
+          , px_2
+          , py_1
+          , bg_color theme.bgInput
+          , text_color theme.textPrimary
+          ]
+      ]
+      []
+  , case hasSubmitButton of
+    HasSubmitButton ->
+      input
+        [ type_ "submit"
         , css
             [ inline_block
             , border
@@ -319,31 +392,14 @@ viewReadonlyIdForm theme hasSubmitButton sharedModel model =
             , py_1
             , bg_color theme.bgInput
             , text_color theme.textPrimary
+            , ml_2
+            , cursor_pointer
             ]
         ]
-        []
-    , case hasSubmitButton of
-      HasSubmitButton ->
-        input
-          [ type_ "submit"
-          , css
-              [ inline_block
-              , border
-              , border_solid
-              , border_color theme.border
-              , rounded
-              , px_2
-              , py_1
-              , bg_color theme.bgInput
-              , text_color theme.textPrimary
-              , ml_2
-              , cursor_pointer
-              ]
-          ]
-          [ text "Submit" ]
-      NoSubmitButton ->
-        text ""
-    ]
+        [ text "Submit" ]
+    NoSubmitButton ->
+      text ""
+  ]
 
 
 viewGettingStarted : Theme -> Shared.Model -> Model -> List (Html Msg)
@@ -1138,65 +1194,43 @@ view sharedModel model =
                                 valDefault
                               _ ->
                                 []
-
-                          errorPara errorTxt =
-                            p
-                              [ css
-                                  [ bg_color theme.bgError
-                                  , border
-                                  , border_solid
-                                  , border_color theme.borderError
-                                  , text_color theme.textError
-                                  , rounded
-                                  , px_4
-                                  , py_2
-                                  , mb_4
-                                  , max_w_xl
-                                  ]
-                              ]
-                              [ text errorTxt ]
                         in
-                        (case sharedModel.songsResult of
-                            Ok gqlRes ->
-                              case gqlRes.data of
-                                Just songsData ->
-                                  [ viewSongsTable
-                                      theme
-                                      sharedModel.songsLoading
-                                      songsData.root.songs
-                                  , viewPagination
-                                      theme
-                                      sharedModel
-                                      songsData.root.totalCount
-                                  ]
-                                Nothing ->
-                                  let
-                                    readonlyIdEmpty =
-                                      (sharedModel.readonlyId
-                                        == Nothing
-                                      )
-                                      || (sharedModel.readonlyId
-                                        == Just ""
-                                      )
-                                  in
-                                  if readonlyIdEmpty
-                                    then viewGettingStarted
-                                      theme
-                                      sharedModel
-                                      model
-                                    else ifNothing
-                                      gqlRes.errors
-                                      [ div
-                                          [ css [ text_center ] ]
-                                          [ text "Loading …" ]
-                                      ]
-                            Err httpError ->
-                              [ viewHttpError httpError ]
-                        )
-                        ++ [ div
-                            []
-                            (model.errors |> List.map errorPara)
-                        ]
+                        case sharedModel.songsResult of
+                          Ok gqlRes ->
+                            case gqlRes.data of
+                              Just songsData ->
+                                [ viewSongsTable
+                                    theme
+                                    sharedModel.songsLoading
+                                    songsData.root.songs
+                                , viewPagination
+                                    theme
+                                    sharedModel
+                                    songsData.root.totalCount
+                                ]
+                              Nothing ->
+                                let
+                                  readonlyIdEmpty =
+                                    (sharedModel.readonlyId
+                                      == Nothing
+                                    )
+                                    || (sharedModel.readonlyId
+                                      == Just ""
+                                    )
+                                in
+                                if readonlyIdEmpty
+                                  then viewGettingStarted
+                                    theme
+                                    sharedModel
+                                    model
+                                  else ifNothing
+                                    gqlRes.errors
+                                    [ div
+                                        [ css [ text_center ] ]
+                                        [ text "Loading …" ]
+                                    ]
+                          Err httpError ->
+                            [ viewHttpError httpError ]
                     )
               )
           ]

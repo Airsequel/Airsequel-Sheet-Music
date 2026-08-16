@@ -276,6 +276,19 @@ export const onReady = ({ env, app }) => {
     })
   }
 
+  if (app.ports && app.ports.navigateBack) {
+    app.ports.navigateBack.subscribe(({ fallbackUrl }) => {
+      // A tab opened directly on the current page has no entry to go
+      // back to, so it is sent to the fallback URL instead
+      if (window.history.length > 1) {
+        window.history.back()
+      }
+      else {
+        window.location.href = fallbackUrl
+      }
+    })
+  }
+
   if (app.ports && app.ports.systemDarkChanged) {
     const notify = event => app.ports.systemDarkChanged.send(event.matches)
     if (darkQuery.addEventListener) {

@@ -6,6 +6,7 @@ port module Effect exposing
   , sendMsg
   , pushRoute
   , replaceRoute
+  , back
   , loadExternalUrl
   , clearReadonlyId
   , saveReadonlyId
@@ -21,7 +22,7 @@ port module Effect exposing
 @docs Effect
 @docs none, batch
 @docs sendCmd, sendMsg, sendSharedMsg
-@docs pushRoute, replaceRoute, loadExternalUrl
+@docs pushRoute, replaceRoute, back, loadExternalUrl
 @docs clearReadonlyId, saveReadonlyId, saveColorPref
 @docs saveSongSettings
 
@@ -48,6 +49,7 @@ type Effect msg
   | SendCmd (Cmd msg) -- ROUTING
   | PushUrl String
   | ReplaceUrl String
+  | NavigateBack { fallbackUrl : String }
   | LoadExternalUrl String -- SHARED
   | SendSharedMsg Shared.Msg.Msg
   | SendToLocalStorage { key : String, value : Json.Encode.Value }
@@ -58,6 +60,9 @@ port sendToLocalStorage :
   , value : Json.Encode.Value
   }
   -> Cmd msg
+
+
+port navigateBack : { fallbackUrl : String } -> Cmd msg
 
 
 saveReadonlyId : String -> Effect msg
@@ -158,6 +163,15 @@ replaceRoute route =
   ReplaceUrl (Route.toString route)
 
 
+{-| Return to the previously visited page, whatever it was.
+Pages opened directly (e.g. via a shared link) have nothing to go back to,
+so they are sent to `fallbackUrl` instead.
+-}
+back : { fallbackUrl : String } -> Effect msg
+back =
+  NavigateBack
+
+
 {-| Redirect users to a new URL, somewhere external your web application.
 -}
 loadExternalUrl : String -> Effect msg
@@ -183,6 +197,8 @@ map fn effect =
       PushUrl url
     ReplaceUrl url ->
       ReplaceUrl url
+    NavigateBack options ->
+      NavigateBack options
     LoadExternalUrl url ->
       LoadExternalUrl url
     SendSharedMsg sharedMsg ->
@@ -215,6 +231,8 @@ toCmd options effect =
       Browser.Navigation.pushUrl options.key url
     ReplaceUrl url ->
       Browser.Navigation.replaceUrl options.key url
+    NavigateBack backOptions ->
+      navigateBack backOptions
     LoadExternalUrl url ->
       Browser.Navigation.load url
     SendSharedMsg sharedMsg ->

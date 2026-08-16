@@ -226,7 +226,7 @@ type Msg
   | ToggleMetronome
   | ToggleAudio Int
   | GotPdfPageCount String Int -- URL, page count
-
+  | NavigateBack
 
 
 update : Props -> Msg -> Model -> ( Model, Effect Msg )
@@ -282,6 +282,10 @@ update props msg model =
     GotPdfPageCount url numPages ->
       ( { model | pdfPages = Dict.insert url numPages model.pdfPages }
       , Effect.none
+      )
+    NavigateBack ->
+      ( model
+      , Effect.back { fallbackUrl = "/songs/" ++ props.songId }
       )
 
 
@@ -483,12 +487,11 @@ viewControls :
   -> ReadDirection
   -> Model
   -> String
-  -> String
   -> Int
   -> Int
   -> List File
   -> Html Msg
-viewControls sharedModel readDirection model readOnlyId songId numOfPages metronomeBpm audioFiles =
+viewControls sharedModel readDirection model readOnlyId numOfPages metronomeBpm audioFiles =
   let
     theme =
       Theme.fromDarkMode (Shared.Model.isDark sharedModel)
@@ -533,16 +536,10 @@ viewControls sharedModel readDirection model readOnlyId songId numOfPages metron
           ]
 
     backButton =
-      [ a
-          [ css
-              [ btnCss
-              , markSelectedFor True False
-              , no_underline
-              , Css.color Css.inherit
-              , font_sans
-              ]
-          , title "Back to song details"
-          , href ("/songs/" ++ songId)
+      [ button
+          [ css [ btnCss, markSelectedFor True False ]
+          , title "Back to the previous page"
+          , onClick NavigateBack
           ]
           [ text "←" ]
       ]
@@ -866,7 +863,6 @@ viewSong sharedModel readDirection model readOnlyId song =
         readDirection
         model
         readOnlyId
-        (String.fromInt song.rowid)
         numOfPages
         (resolveMetronomeBpm model song)
         (List.filter Types.File.isAudio song.files)

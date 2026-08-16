@@ -324,12 +324,11 @@ viewPageFrame song readDirection model numOfPages index leaf =
               ]
           Sepia ->
             Css.property "mix-blend-mode" "multiply"
-        , if model.showDividers
+        , -- Dividers go between pages, so the last page gets none
+        if model.showDividers && index < numOfPages - 1
           then case readDirection of
             ReadHorizontal ->
-              if index < numOfPages - 1
-                then border_r_2
-                else Css.batch []
+              border_r_2
             ReadVertical ->
               border_b_2
           else Css.batch []

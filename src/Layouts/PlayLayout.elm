@@ -791,11 +791,7 @@ viewControls sharedModel readDirection model readOnlyId songId numOfPages metron
             , w_full
             , items_stretch
             , gap_x_0_dot_5
-            , gap_y_0_dot_5 -- Keep the controls in reach
-            -- while scrolling through the pages
-            , sticky
-            , top_0
-            , z_10
+            , gap_y_0_dot_5
             ]
           else Css.batch
             [ flex_col
@@ -898,7 +894,7 @@ viewSong sharedModel readDirection model readOnlyId song =
             ]
         ReadVertical ->
           div
-            [ css [ flex, flex_col, min_h_full ] ]
+            [ css [ flex, flex_col ] ]
             [ controls numOfPages
             , divImages pages
             ]
@@ -965,10 +961,9 @@ viewPages settings sharedModel model song =
     (css
         [ case settings.readDirection of
           ReadHorizontal ->
-            h_full -- Scroll inside this container instead of the document,
-          -- so the sticky header bar stays visible
+            h_full
           ReadVertical ->
-            Css.batch [ w_full, h_full ]
+            w_full
         , case model.colorScheme of
           Light ->
             bg_color white

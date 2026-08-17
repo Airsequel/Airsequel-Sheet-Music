@@ -1114,6 +1114,10 @@ view sharedModel model =
               , min_h_full
               , border_color theme.border
               , lg [ border_x ]
+              , -- The app runs edge to edge in standalone mode
+              -- (see "viewport-fit=cover"), so the heading has to
+              -- clear the status bar overlaying the top of the screen
+              Css.property "padding-top" "env(safe-area-inset-top)"
               ]
           ]
           [ Css.Global.global globalStyles

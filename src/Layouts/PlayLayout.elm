@@ -781,6 +781,10 @@ viewControls sharedModel readDirection model readOnlyId numOfPages metronomeBpm 
         [ flex
         , flex_shrink_0
         , bg_color theme.sidebarBg
+        , -- In standalone mode the pages run underneath the status bar
+        -- to gain every last pixel, but the controls must stay clear
+        -- of it to remain readable and tappable
+        Css.property "padding-top" "env(safe-area-inset-top)"
         , if isHeaderBar
           then Css.batch
             [ flex_row

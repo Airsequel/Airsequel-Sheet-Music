@@ -153,6 +153,12 @@ view settings sharedModel tab { toContentMsg, content } =
               [ bg_color theme.bgPanel
               , py_12
               , px_10
+              , -- The app runs edge to edge in standalone mode
+              -- (see "viewport-fit=cover"), so the heading has to
+              -- clear the status bar overlaying the top of the screen
+              Css.property
+                  "padding-top"
+                  "calc(3rem + env(safe-area-inset-top))"
               , max_w_5xl
               , mx_auto
               , min_h_full

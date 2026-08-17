@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Two beamed eighth notes, used twice: once stroked in the
+         background color to knock a gap into the staff lines,
+         once filled white on top. -->
+    <g id="note">
+      <ellipse cx="170" cy="314" rx="32" ry="23" transform="rotate(-20 170 314)"/>
+      <ellipse cx="300" cy="242" rx="32" ry="23" transform="rotate(-20 300 242)"/>
+      <rect x="192" y="150" width="14" height="166"/>
+      <rect x="322" y="150" width="14" height="94"/>
+      <rect x="192" y="150" width="144" height="30"/>
+    </g>
+  </defs>
+  <rect width="512" height="512" fill="#1e40af"/>
+  <g stroke="#ffffff" stroke-width="9" stroke-linecap="round">
+    <line x1="96" y1="170" x2="416" y2="170"/>
+    <line x1="96" y1="206" x2="416" y2="206"/>
+    <line x1="96" y1="242" x2="416" y2="242"/>
+    <line x1="96" y1="278" x2="416" y2="278"/>
+    <line x1="96" y1="314" x2="416" y2="314"/>
+  </g>
+  <use href="#note" fill="#1e40af" stroke="#1e40af" stroke-width="26" stroke-linejoin="round"/>
+  <use href="#note" fill="#ffffff"/>
+</svg>

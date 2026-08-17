@@ -28,12 +28,45 @@
         {
           "name": "viewport",
           "content": "width=device-width, initial-scale=1.0"
+        },
+        {
+          "name": "apple-mobile-web-app-capable",
+          "content": "yes"
+        },
+        {
+          "name": "mobile-web-app-capable",
+          "content": "yes"
+        },
+        {
+          "name": "apple-mobile-web-app-title",
+          "content": "Airsequel Sheet Music"
+        },
+        {
+          "name": "apple-mobile-web-app-status-bar-style",
+          "content": "default"
+        },
+        {
+          "name": "theme-color",
+          "content": "#1e40af"
         }
       ],
       "link": [
         {
           "rel": "stylesheet",
           "href": "/main.css"
+        },
+        {
+          "rel": "manifest",
+          "href": "/manifest.webmanifest"
+        },
+        {
+          "rel": "icon",
+          "type": "image/svg+xml",
+          "href": "/icon.svg"
+        },
+        {
+          "rel": "apple-touch-icon",
+          "href": "/apple-touch-icon.png"
         }
       ],
       "script": []
